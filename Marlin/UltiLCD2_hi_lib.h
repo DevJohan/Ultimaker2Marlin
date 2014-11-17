@@ -15,10 +15,23 @@ typedef void (*entryDetailsCallback_t)(uint8_t nr);
 #define SCROLL_MENU_ITEM_POS(n)  (ENCODER_TICKS_PER_SCROLL_MENU_ITEM * (n) + ENCODER_TICKS_PER_SCROLL_MENU_ITEM / 2)
 #define SELECT_MAIN_MENU_ITEM(n)  do { lcd_lib_encoder_pos = MAIN_MENU_ITEM_POS(n); } while(0)
 #define SELECT_SCROLL_MENU_ITEM(n)  do { lcd_lib_encoder_pos = SCROLL_MENU_ITEM_POS(n); } while(0)
-#define SELECTED_MAIN_MENU_ITEM() (lcd_lib_encoder_pos / ENCODER_TICKS_PER_MAIN_MENU_ITEM)
+#define SELECTED_MAIN_MENU_ITEM() ( lcd_lib_encoder_pos / ENCODER_TICKS_PER_MAIN_MENU_ITEM)
 #define SELECTED_SCROLL_MENU_ITEM() (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM)
 #define IS_SELECTED_MAIN(n) ((n) == SELECTED_MAIN_MENU_ITEM())
 #define IS_SELECTED_SCROLL(n) ((n) == SELECTED_SCROLL_MENU_ITEM())
+#define IS_SELECTED_SCROLL_T(n) (static_cast<int>(n) == SELECTED_SCROLL_MENU_ITEM())
+
+template <typename T>
+inline __attribute__((always_inline)) constexpr T to_item( const uint8_t nr ) { return static_cast<T>(nr); }
+
+template <typename T>
+inline __attribute__((always_inline)) constexpr T selected_scroll_menu_item() {
+	return to_item<T>( SELECTED_SCROLL_MENU_ITEM() );
+}
+template <typename T>
+inline __attribute__((always_inline)) constexpr bool is_selected_scroll( T n ) {
+	return n == selected_scroll_menu_item<T>();
+}
 
 void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION);
 

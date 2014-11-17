@@ -19,6 +19,7 @@ void lcd_menu_maintenance_advanced_bed_heatup();
 static void lcd_menu_maintenance_led();
 static void lcd_menu_maintenance_extrude();
 static void lcd_menu_maintenance_retraction();
+static void lcd_menu_maintenance_cold_pull_cleaning();
 static void lcd_menu_advanced_version();
 static void lcd_menu_advanced_stats();
 static void lcd_menu_maintenance_motion();
@@ -41,49 +42,88 @@ void lcd_menu_maintenance()
     lcd_lib_update_screen();
 }
 
+enum class maintanance_advanced_item : uint8_t{
+	Return,
+    LED_settings,
+#if EXTRUDERS < 2
+    Heatup_nozzle,
+#else
+    Heatup_first_nozzle,
+    Heatup_second_nozzle,
+#endif
+    Heatup_buildplate,
+    Home_head,
+    Lower_buildplate,
+    Raise_buildplate,
+    Insert_material,
+#if EXTRUDERS < 2
+    Move_material,
+#else
+    Move_material_1,
+    Move_material_2,
+#endif
+    Do_atomic,
+    Set_fan_speed,
+    Retraction_settings,
+    Motion_settings,
+    Version,
+    Runtime_stats,
+    Factory_reset,
+    number_of_items
+};
+
+
+static constexpr uint8_t number_of_maintanance_advanced_items =
+		static_cast<uint8_t>(maintanance_advanced_item::number_of_items);
+
 static char* lcd_advanced_item(uint8_t nr)
 {
-    if (nr == 0)
+	const maintanance_advanced_item item = static_cast<maintanance_advanced_item>(nr);
+    if (item == maintanance_advanced_item::Return)
         strcpy_P(card.longFilename, PSTR("< RETURN"));
-    else if (nr == 1)
+    else if (item == maintanance_advanced_item::LED_settings)
         strcpy_P(card.longFilename, PSTR("LED settings"));
-    else if (nr == 2)
 #if EXTRUDERS < 2
+    else if (item == maintanance_advanced_item::Heatup_nozzle)
         strcpy_P(card.longFilename, PSTR("Heatup nozzle"));
 #else
+    else if (item == maintanance_advanced_item::Heatup_nozzle_1)
         strcpy_P(card.longFilename, PSTR("Heatup first nozzle"));
-    else if (nr == 3)
+    else if (item == maintanance_advanced_item::Heatup_nozzle_2)
         strcpy_P(card.longFilename, PSTR("Heatup second nozzle"));
 #endif
-    else if (nr == 2 + EXTRUDERS)
+    else if (item == maintanance_advanced_item::Heatup_buildplate)
         strcpy_P(card.longFilename, PSTR("Heatup buildplate"));
-    else if (nr == 3 + EXTRUDERS)
+    else if (item == maintanance_advanced_item::Home_head)
         strcpy_P(card.longFilename, PSTR("Home head"));
-    else if (nr == 4 + EXTRUDERS)
+    else if (item == maintanance_advanced_item::Lower_buildplate)
         strcpy_P(card.longFilename, PSTR("Lower buildplate"));
-    else if (nr == 5 + EXTRUDERS)
+    else if (item == maintanance_advanced_item::Raise_buildplate)
         strcpy_P(card.longFilename, PSTR("Raise buildplate"));
-    else if (nr == 6 + EXTRUDERS)
+    else if (item == maintanance_advanced_item::Insert_material)
         strcpy_P(card.longFilename, PSTR("Insert material"));
-    else if (nr == 7 + EXTRUDERS)
 #if EXTRUDERS < 2
+    else if (item == maintanance_advanced_item::Move_material)
         strcpy_P(card.longFilename, PSTR("Move material"));
 #else
-        strcpy_P(card.longFilename, PSTR("Move material (1)"));
-    else if (nr == 8 + EXTRUDERS)
-        strcpy_P(card.longFilename, PSTR("Move material (2)"));
+    else if (item == maintanance_advanced_item::Move_material_1)
+        strcpy_P(card.longFilename, PSTR("Move material 1"));
+    else if (item == maintanance_advanced_item::Move_material_2)
+        strcpy_P(card.longFilename, PSTR("Move material 2"));
 #endif
-    else if (nr == 7 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Do_atomic)
+        strcpy_P(card.longFilename, PSTR("Do cold pull"));
+    else if (item == maintanance_advanced_item::Set_fan_speed)
         strcpy_P(card.longFilename, PSTR("Set fan speed"));
-    else if (nr == 8 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Retraction_settings)
         strcpy_P(card.longFilename, PSTR("Retraction settings"));
-    else if (nr == 9 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Motion_settings)
         strcpy_P(card.longFilename, PSTR("Motion settings"));
-    else if (nr == 10 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Version)
         strcpy_P(card.longFilename, PSTR("Version"));
-    else if (nr == 11 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Runtime_stats)
         strcpy_P(card.longFilename, PSTR("Runtime stats"));
-    else if (nr == 12 + EXTRUDERS * 2)
+    else if (item == maintanance_advanced_item::Factory_reset)
         strcpy_P(card.longFilename, PSTR("Factory reset"));
     else
         strcpy_P(card.longFilename, PSTR("???"));
@@ -96,56 +136,70 @@ static void lcd_advanced_details(uint8_t nr)
 
 static void lcd_menu_maintenance_advanced()
 {
-    lcd_scroll_menu(PSTR("ADVANCED"), 13 + EXTRUDERS * 2, lcd_advanced_item, lcd_advanced_details);
+    lcd_scroll_menu(PSTR("ADVANCED"), number_of_maintanance_advanced_items, lcd_advanced_item, lcd_advanced_details);
     if (lcd_lib_button_pressed)
     {
-        if (IS_SELECTED_SCROLL(0))
-            lcd_change_to_menu(lcd_menu_maintenance);
-        else if (IS_SELECTED_SCROLL(1))
-            lcd_change_to_menu(lcd_menu_maintenance_led, 0);
-        else if (IS_SELECTED_SCROLL(2))
+        if (		IS_SELECTED_SCROLL_T( maintanance_advanced_item::Return ))
+            lcd_change_to_menu( lcd_menu_maintenance );
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::LED_settings))
+            lcd_change_to_menu( lcd_menu_maintenance_led, 0 );
+#if EXTRUDERS < 2
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_nozzle))
         {
             active_extruder = 0;
-            lcd_change_to_menu(lcd_menu_maintenance_advanced_heatup, 0);
+            lcd_change_to_menu( lcd_menu_maintenance_advanced_heatup, 0);
         }
-#if EXTRUDERS > 1
-        else if (IS_SELECTED_SCROLL(3))
+#else
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_first_nozzle))
+        {
+            active_extruder = 0;
+            lcd_change_to_menu( lcd_menu_maintenance_advanced_heatup, 0);
+        }
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_second_nozzle ))
         {
             active_extruder = 1;
-            lcd_change_to_menu(lcd_menu_maintenance_advanced_heatup, 0);
+            lcd_change_to_menu( lcd_menu_maintenance_advanced_heatup, 0);
         }
 #endif
-        else if (IS_SELECTED_SCROLL(2 + EXTRUDERS))
-            lcd_change_to_menu(lcd_menu_maintenance_advanced_bed_heatup, 0);
-        else if (IS_SELECTED_SCROLL(3 + EXTRUDERS))
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_buildplate ))
+            lcd_change_to_menu( lcd_menu_maintenance_advanced_bed_heatup, 0);
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Home_head ))
         {
             lcd_lib_beep();
             enquecommand_P(PSTR("G28 X0 Y0"));
         }
-        else if (IS_SELECTED_SCROLL(4 + EXTRUDERS))
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Lower_buildplate ))
         {
             lcd_lib_beep();
             enquecommand_P(PSTR("G28 Z0"));
         }
-        else if (IS_SELECTED_SCROLL(5 + EXTRUDERS))
+        else if (	IS_SELECTED_SCROLL_T(maintanance_advanced_item::Raise_buildplate ))
         {
             lcd_lib_beep();
             enquecommand_P(PSTR("G28 Z0"));
             enquecommand_P(PSTR("G1 Z40"));
         }
-        else if (IS_SELECTED_SCROLL(6 + EXTRUDERS))
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Insert_material ))
         {
             lcd_change_to_menu(lcd_menu_insert_material, 0);
         }
-        else if (IS_SELECTED_SCROLL(7 + EXTRUDERS))
+#if EXTRUDERS < 2
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_nozzle ))
         {
             set_extrude_min_temp(0);
             active_extruder = 0;
             target_temperature[active_extruder] = material[active_extruder].temperature;
             lcd_change_to_menu(lcd_menu_maintenance_extrude, 0);
         }
-#if EXTRUDERS > 1
-        else if (IS_SELECTED_SCROLL(8 + EXTRUDERS))
+#else
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_nozzle_1 ))
+        {
+            set_extrude_min_temp(0);
+            active_extruder = 0;
+            target_temperature[active_extruder] = material[active_extruder].temperature;
+            lcd_change_to_menu(lcd_menu_maintenance_extrude, 0);
+        }
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Heatup_nozzle_2 ))
         {
             set_extrude_min_temp(0);
             active_extruder = 1;
@@ -153,18 +207,20 @@ static void lcd_menu_maintenance_advanced()
             lcd_change_to_menu(lcd_menu_maintenance_extrude, 0);
         }
 #endif
-        else if (IS_SELECTED_SCROLL(7 + EXTRUDERS * 2))
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Do_atomic ))
+        	lcd_change_to_menu(lcd_menu_maintenance_cold_pull_cleaning, 0);
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Set_fan_speed ))
             LCD_EDIT_SETTING_BYTE_PERCENT(fanSpeed, "Fan speed", "%", 0, 100);
-        else if (IS_SELECTED_SCROLL(8 + EXTRUDERS * 2))
-            lcd_change_to_menu(lcd_menu_maintenance_retraction, SCROLL_MENU_ITEM_POS(0));
-        else if (IS_SELECTED_SCROLL(9 + EXTRUDERS * 2))
-            lcd_change_to_menu(lcd_menu_maintenance_motion, SCROLL_MENU_ITEM_POS(0));
-        else if (IS_SELECTED_SCROLL(10 + EXTRUDERS * 2))
-            lcd_change_to_menu(lcd_menu_advanced_version, SCROLL_MENU_ITEM_POS(0));
-        else if (IS_SELECTED_SCROLL(11 + EXTRUDERS * 2))
-            lcd_change_to_menu(lcd_menu_advanced_stats, SCROLL_MENU_ITEM_POS(0));
-        else if (IS_SELECTED_SCROLL(12 + EXTRUDERS * 2))
-            lcd_change_to_menu(lcd_menu_advanced_factory_reset, SCROLL_MENU_ITEM_POS(1));
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Retraction_settings ))
+            lcd_change_to_menu( lcd_menu_maintenance_retraction, SCROLL_MENU_ITEM_POS(0));
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Motion_settings ))
+            lcd_change_to_menu( lcd_menu_maintenance_motion, SCROLL_MENU_ITEM_POS(0));
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Version ))
+            lcd_change_to_menu( lcd_menu_advanced_version, SCROLL_MENU_ITEM_POS(0));
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Runtime_stats ))
+            lcd_change_to_menu( lcd_menu_advanced_stats, SCROLL_MENU_ITEM_POS(0));
+        else if (	IS_SELECTED_SCROLL_T( maintanance_advanced_item::Factory_reset ))
+            lcd_change_to_menu( lcd_menu_advanced_factory_reset, SCROLL_MENU_ITEM_POS(1));
     }
 }
 
@@ -243,6 +299,10 @@ void lcd_menu_maintenance_advanced_bed_heatup()
     int_to_string(int(target_temperature_bed), buffer+strlen(buffer), PSTR("C"));
     lcd_lib_draw_string_center(30, buffer);
     lcd_lib_update_screen();
+}
+
+void lcd_menu_maintenance_cold_pull_cleaning()
+{
 }
 
 void lcd_menu_advanced_version()

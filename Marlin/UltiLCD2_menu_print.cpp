@@ -610,50 +610,82 @@ static void lcd_menu_print_ready()
     lcd_lib_update_screen();
 }
 
-static char* tune_item_callback(uint8_t nr)
+enum class print_tune_item {
+	RETURN,
+	Pause_Resume,
+	Speed,
+#if EXTRUDERS < 2
+	Temperature,
+#else
+    Temperature_1,
+    Temperature_2,
+#endif
+    Buildplate_temp,
+    Fan_speed,
+#if EXTRUDERS < 2
+    Material_flow,
+#else
+    Material_flow_1,
+    Material flow 2,
+#endif
+	Retraction,
+	LED_Brightness,
+	number_of_items
+};
+
+constexpr uint8_t number_of_print_tune_items =
+		static_cast<uint8_t>( print_tune_item::number_of_items );
+
+static char* tune_item_callback( uint8_t nr)
 {
     char* c = (char*)lcd_cache;
-    if (nr == 0)
-        strcpy_P(c, PSTR("< RETURN"));
-    else if (nr == 1)
+    if( to_item<print_tune_item>(nr)  == print_tune_item::RETURN )
+    	strcpy_P(c, PSTR("< RETURN"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Pause_Resume)
     {
-        if (!card.pause)
-        {
-            if (movesplanned() > 0)
-                strcpy_P(c, PSTR("Pause"));
-            else
-                strcpy_P(c, PSTR("Can not pause"));
-        }
-        else
-        {
-            if (movesplanned() < 1)
-                strcpy_P(c, PSTR("Resume"));
-            else
-                strcpy_P(c, PSTR("Pausing..."));
-        }
+    	if (!card.pause)
+    	{
+    		if (movesplanned() > 0)
+    			strcpy_P(c, PSTR("Pause"));
+    		else
+    			strcpy_P(c, PSTR("Can not pause"));
+    	}
+    	else
+    	{
+    		if (movesplanned() < 1)
+    			strcpy_P(c, PSTR("Resume"));
+    		else
+    			strcpy_P(c, PSTR("Pausing..."));
+    	}
     }
-    else if (nr == 2)
-        strcpy_P(c, PSTR("Speed"));
-    else if (nr == 3)
-        strcpy_P(c, PSTR("Temperature"));
-#if EXTRUDERS > 1
-    else if (nr == 4)
-        strcpy_P(c, PSTR("Temperature 2"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Speed)
+    	strcpy_P(c, PSTR("Speed"));
+#if EXTRUDERS < 2
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Temperature)
+    	strcpy_P(c, PSTR("Temperature"));
+#else
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Temperature_1)
+    	strcpy_P(c, PSTR("Temperature 1"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Temperature_2)
+    	strcpy_P(c, PSTR("Temperature 2"));
 #endif
-    else if (nr == 3 + EXTRUDERS)
-        strcpy_P(c, PSTR("Buildplate temp."));
-    else if (nr == 4 + EXTRUDERS)
-        strcpy_P(c, PSTR("Fan speed"));
-    else if (nr == 5 + EXTRUDERS)
-        strcpy_P(c, PSTR("Material flow"));
-#if EXTRUDERS > 1
-    else if (nr == 6 + EXTRUDERS)
-        strcpy_P(c, PSTR("Material flow 2"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Buildplate_temp)
+    	strcpy_P(c, PSTR("Buildplate temp."));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Fan_speed )
+    	strcpy_P(c, PSTR("Fan speed"));
+#if EXTRUDERS < 2
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Material_flow)
+    	strcpy_P(c, PSTR("Material flow"));
+#else
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Material_flow_1)
+    	strcpy_P(c, PSTR("Material flow 1"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Material_flow_2)
+    	strcpy_P(c, PSTR("Material flow 2"));
 #endif
-    else if (nr == 5 + EXTRUDERS * 2)
-        strcpy_P(c, PSTR("Retraction"));
-    else if (nr == 6 + EXTRUDERS * 2)
-        strcpy_P(c, PSTR("LED Brightness"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::Retraction)
+    	strcpy_P(c, PSTR("Retraction"));
+    else if( to_item<print_tune_item>(nr)  == print_tune_item::LED_Brightness)
+    	strcpy_P(c, PSTR("LED Brightness"));
     return c;
 }
 
@@ -750,9 +782,11 @@ void lcd_menu_print_tune_heatup_nozzle1()
 }
 #endif
 extern void lcd_menu_maintenance_advanced_bed_heatup();//TODO
+
+
 static void lcd_menu_print_tune()
 {
-    lcd_scroll_menu(PSTR("TUNE"), 7 + EXTRUDERS * 2, tune_item_callback, tune_item_details_callback);
+    lcd_scroll_menu(PSTR("TUNE"), number_of_print_tune_items, tune_item_callback, tune_item_details_callback);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -800,9 +834,12 @@ static void lcd_menu_print_tune()
             lcd_change_to_menu(lcd_menu_maintenance_advanced_bed_heatup, 0);//Use the maintainace heatup menu, which shows the current temperature.
         else if (IS_SELECTED_SCROLL(4 + EXTRUDERS))
             LCD_EDIT_SETTING_BYTE_PERCENT(fanSpeed, "Fan speed", "%", 0, 100);
+#if EXTRUDERS < 2
         else if (IS_SELECTED_SCROLL(5 + EXTRUDERS))
             LCD_EDIT_SETTING(extrudemultiply[0], "Material flow", "%", 10, 1000);
-#if EXTRUDERS > 1
+#else
+        else if (IS_SELECTED_SCROLL(5 + EXTRUDERS))
+            LCD_EDIT_SETTING(extrudemultiply[0], "Material flow 1", "%", 10, 1000);
         else if (IS_SELECTED_SCROLL(6 + EXTRUDERS))
             LCD_EDIT_SETTING(extrudemultiply[1], "Material flow 2", "%", 10, 1000);
 #endif
