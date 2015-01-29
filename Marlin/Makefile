@@ -40,8 +40,8 @@
 HARDWARE_MOTHERBOARD ?= 72
 
 # Arduino source install directory, and version number
-ARDUINO_INSTALL_DIR  ?= /usr/share/arduino
-ARDUINO_VERSION      ?= 105
+ARDUINO_INSTALL_DIR  ?= /home/johan/Dev/arduino-1.5.8/
+ARDUINO_VERSION      ?= 158
 
 # You can optionally set a path to the avr-gcc tools. Requires a trailing slash. (ex: /usr/local/avr-gcc/bin)
 AVR_TOOLS_PATH ?= $(ARDUINO_INSTALL_DIR)/hardware/tools/avr/bin/
@@ -53,6 +53,9 @@ UPLOAD_PORT        ?= /dev/arduino
 
 #Directory used to build files in, contains all the build files, from object files to the final hex file.
 BUILD_DIR          ?= applet
+
+# This defines whether Liquid_TWI2 support will be built
+LIQUID_TWI2 ?= 0
 
 ############################################################################
 # Below here nothing should be changed...
@@ -174,15 +177,26 @@ F_CPU ?= 16000000
 # that derives from that, and their source are present in
 # the main Marlin source directory
 ifeq ($(HARDWARE_VARIANT), arduino)
-HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true ), true)
+		HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr
+		HARDWARE_SRC = $(HARDWARE_DIR)/cores/arduino
+	else
+		HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware
+	endif
+	HARDWARE_LIB_DIR = $(ARDUINO_INSTALL_DIR)/libraries
+else ifeq ($(HARDWARE_VARIANT), arduino_due)
+	HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware/arduino/sam
+	HARDWARE_SRC ?= $(HARDWARE_DIR)/cores/arduino
+	HARDWARE_LIB_DIR = $(ARDUINO_INSTALL_DIR)/libraries/
 else
-ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
-HARDWARE_DIR = ../ArduinoAddons/Arduino_1.x.x
-else
-HARDWARE_DIR = ../ArduinoAddons/Arduino_0.xx
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
+		HARDWARE_DIR = ../ArduinoAddons/Arduino_1.x.x
+	else
+		HARDWARE_DIR = ../ArduinoAddons/Arduino_0.xx
+	endif
 endif
-endif
-HARDWARE_SRC = $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/cores/arduino
+HARDWARE_SRC ?= $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/cores/arduino
+HARDWARE_LIB_DIR ?= $(HARDWARE_DIR)/libraries
 
 TARGET = $(notdir $(CURDIR))
 
@@ -193,20 +207,46 @@ TARGET = $(notdir $(CURDIR))
 VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
-ifeq ($(HARDWARE_VARIANT), arduino)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidCrystal
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
-else
-VPATH += $(HARDWARE_DIR)/libraries/LiquidCrystal
-VPATH += $(HARDWARE_DIR)/libraries/SPI
+
+ifeq ($(LIQUID_TWI2), 1)
+	VPATH += $(HARDWARE_LIB_DIR)/Wire
+	VPATH += $(HARDWARE_LIB_DIR)/Wire/utilities
+	VPATH += $(HARDWARE_LIB_DIR)/libraries/LiquidTWI2
 endif
+
 ifeq ($(HARDWARE_VARIANT), arduino)
-HARDWARE_SUB_VARIANT ?= mega
-VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
+	HARDWARE_SUB_VARIANT ?= mega
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 158 ] && echo true), true)
+		DEFINES += __PROG_TYPES_COMPAT__
+		VPATH += $(HARDWARE_DIR)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_DIR)/libraries/SPI
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal/src
+	else ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true), true)
+		DEFINES += __PROG_TYPES_COMPAT__
+		VPATH += $(HARDWARE_DIR)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_LIB_DIR)/SPI/arch/avr
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal/src
+	else
+		VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_LIB_DIR)/SPI
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal
+	endif
+else ifeq ($(HARDWARE_VARIANT), arduino_due)
+	HARDWARE_SUB_VARIANT ?= arduino_due_x
+	VPATH += $(HARDWARE_DIR)/variants/$(HARDWARE_SUB_VARIANT)
+	VPATH += $(HARDWARE_LIB_DIR)/SPI/arch/sam
+	VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal/src
+	VPATH += $(HARDWARE_DIR)/system/libsam
+	VPATH += $(HARDWARE_DIR)/system/CMSIS/Device/ATMEL/
+	VPATH += $(HARDWARE_DIR)/system/CMSIS/CMSIS/Include/
+	DEFINES += ARDUINO_SAM_DUE ARDUINO_ARCH_SAM __SAM_3X8E__ USB_VID=0x2341 USB_PID=0x003e AT90USB
 else
-HARDWARE_SUB_VARIANT ?= standard
-VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
+	HARDWARE_SUB_VARIANT ?= standard
+	VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
+	VPATH += $(HARDWARE_LIB_DIR)/SPI
+	VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal
 endif
+
 SRC = wiring.c \
 	wiring_analog.c wiring_digital.c \
 	wiring_pulse.c \
@@ -215,11 +255,25 @@ CXXSRC = WMath.cpp WString.cpp Print.cpp Marlin_main.cpp	\
 	MarlinSerial.cpp Sd2Card.cpp SdBaseFile.cpp SdFatUtil.cpp	\
 	SdFile.cpp SdVolume.cpp motion_control.cpp planner.cpp		\
 	stepper.cpp temperature.cpp cardreader.cpp ConfigurationStore.cpp \
-	watchdog.cpp electronics_test.cpp
+	watchdog.cpp electronics_test.cpp \
+	Sd2AsyncCard.cpp SdAsyncVolume.cpp SdAsyncBaseFile.cpp SdAsyncFile.cpp
 CXXSRC += LiquidCrystal.cpp ultralcd.cpp SPI.cpp Servo.cpp Tone.cpp
 CXXSRC += UltiLCD2.cpp UltiLCD2_gfx.cpp UltiLCD2_hi_lib.cpp UltiLCD2_low_lib.cpp \
 	UltiLCD2_menu_first_run.cpp UltiLCD2_menu_maintenance.cpp UltiLCD2_menu_material.cpp \
 	UltiLCD2_menu_print.cpp lifetime_stats.cpp
+
+ifeq ( $(HARDWARE_VARIANT), arduino)
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true), true)
+		CXXSRC += hooks.cpp
+	endif
+else ifeq ($(HARDWARE_VARIANT), arduino_due)
+		CXXSRC += hooks.cpp
+endif
+
+ifneq ($(LIQUID_TWI2), 0)
+	SRC += twi.c
+	CPPSRC += Wire.cpp LiquidTWI2.cpp
+endif
 
 #Check for Arduino 1.0.0 or higher and use the correct sourcefiles for that version
 ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
@@ -236,13 +290,24 @@ MAKEFILE = Makefile
 # Debugging format.
 # Native formats for AVR-GCC's -g are stabs [default], or dwarf-2.
 # AVR (extended) COFF requires stabs, plus an avr-objcopy run.
-DEBUG = stabs
+ifneq ($(HARDWARE_VARIANT), arduino_due)
+	DEBUG = stabs
+endif
 
 OPT = s
 
 DEFINES ?=
 
 # Program settings
+ifeq ($(HARDWARE_VARIANT), arduino_due)
+CC = $(ARM_TOOLS_PATH)arm-none-eabi-gcc
+CXX = $(ARM_TOOLS_PATH)arm-none-eabi-g++
+OBJCOPY = $(ARM_TOOLS_PATH)arm-none-eabi-objcopy
+OBJDUMP = $(ARM_TOOLS_PATH)arm-none-eabi-objdump
+AR  = $(ARM_TOOLS_PATH)arm-none-eabi-ar
+SIZE = $(ARM_TOOLS_PATH)arm-none-eabi-size
+NM = $(ARM_TOOLS_PATH)arm-none-eabi-nm
+else
 CC = $(AVR_TOOLS_PATH)avr-gcc
 CXX = $(AVR_TOOLS_PATH)avr-g++
 OBJCOPY = $(AVR_TOOLS_PATH)avr-objcopy
@@ -250,6 +315,7 @@ OBJDUMP = $(AVR_TOOLS_PATH)avr-objdump
 AR  = $(AVR_TOOLS_PATH)avr-ar
 SIZE = $(AVR_TOOLS_PATH)avr-size
 NM = $(AVR_TOOLS_PATH)avr-nm
+endif
 AVRDUDE = avrdude
 REMOVE = rm -f
 MV = mv -f
@@ -307,9 +373,16 @@ LST = $(ASRC:.S=.lst) $(CXXSRC:.cpp=.lst) $(SRC:.c=.lst)
 
 # Combine all necessary flags and optional flags.
 # Add target processor to flags.
-ALL_CFLAGS = -mmcu=$(MCU) -I. $(CFLAGS)
-ALL_CXXFLAGS = -mmcu=$(MCU) $(CXXFLAGS)
-ALL_ASFLAGS = -mmcu=$(MCU) -x assembler-with-cpp $(ASFLAGS)
+
+ifeq ($(HARDWARE_VARIANT), arduino_due)
+	MCU_FLAG = -mcpu=cortex-m3 -mthumb
+else
+	MCU_FLAG=-mmcu=$(MCU)
+endif
+
+ALL_CFLAGS = $(MCU_FLAG) -I. $(CFLAGS)
+ALL_CXXFLAGS = $(MCU_FLAG) $(CXXFLAGS)
+ALL_ASFLAGS = $(MCU_FLAG) -x assembler-with-cpp $(ASFLAGS)
 
 # set V=1 (eg, "make V=1") to print the full commands etc.
 ifneq ($V,1)
