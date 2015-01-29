@@ -40,8 +40,8 @@
 HARDWARE_MOTHERBOARD ?= 72
 
 # Arduino source install directory, and version number
-ARDUINO_INSTALL_DIR  ?= /usr/share/arduino
-ARDUINO_VERSION      ?= 105
+ARDUINO_INSTALL_DIR  ?= /home/johan/Dev/arduino-1.5.8/
+ARDUINO_VERSION      ?= 158
 
 # You can optionally set a path to the avr-gcc tools. Requires a trailing slash. (ex: /usr/local/avr-gcc/bin)
 AVR_TOOLS_PATH ?= $(ARDUINO_INSTALL_DIR)/hardware/tools/avr/bin/
@@ -174,15 +174,22 @@ F_CPU ?= 16000000
 # that derives from that, and their source are present in
 # the main Marlin source directory
 ifeq ($(HARDWARE_VARIANT), arduino)
-HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true ), true)
+		HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware/arduino/avr
+		HARDWARE_SRC = $(HARDWARE_DIR)/cores/arduino
+	else
+		HARDWARE_DIR = $(ARDUINO_INSTALL_DIR)/hardware
+	endif
+	HARDWARE_LIB_DIR = $(ARDUINO_INSTALL_DIR)/libraries
 else
-ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
-HARDWARE_DIR = ../ArduinoAddons/Arduino_1.x.x
-else
-HARDWARE_DIR = ../ArduinoAddons/Arduino_0.xx
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
+		HARDWARE_DIR = ../ArduinoAddons/Arduino_1.x.x
+	else
+		HARDWARE_DIR = ../ArduinoAddons/Arduino_0.xx
+	endif
 endif
-endif
-HARDWARE_SRC = $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/cores/arduino
+HARDWARE_SRC ?= $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/cores/arduino
+HARDWARE_LIB_DIR ?= $(HARDWARE_DIR)/libraries
 
 TARGET = $(notdir $(CURDIR))
 
@@ -194,19 +201,29 @@ VPATH = .
 VPATH += $(BUILD_DIR)
 VPATH += $(HARDWARE_SRC)
 ifeq ($(HARDWARE_VARIANT), arduino)
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/LiquidCrystal
-VPATH += $(ARDUINO_INSTALL_DIR)/libraries/SPI
+	HARDWARE_SUB_VARIANT ?= mega
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 158 ] && echo true), true)
+		DEFINES += __PROG_TYPES_COMPAT__
+		VPATH += $(HARDWARE_DIR)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_DIR)/libraries/SPI
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal/src
+	else ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true), true)
+		DEFINES += __PROG_TYPES_COMPAT__
+		VPATH += $(HARDWARE_DIR)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_LIB_DIR)/SPI/arch/avr
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal/src
+	else
+		VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
+		VPATH += $(HARDWARE_LIB_DIR)/SPI
+		VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal
+	endif
 else
-VPATH += $(HARDWARE_DIR)/libraries/LiquidCrystal
-VPATH += $(HARDWARE_DIR)/libraries/SPI
+	HARDWARE_SUB_VARIANT ?= standard
+	VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
+	VPATH += $(HARDWARE_LIB_DIR)/SPI
+	VPATH += $(HARDWARE_LIB_DIR)/LiquidCrystal
 endif
-ifeq ($(HARDWARE_VARIANT), arduino)
-HARDWARE_SUB_VARIANT ?= mega
-VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
-else
-HARDWARE_SUB_VARIANT ?= standard
-VPATH += $(HARDWARE_DIR)/$(HARDWARE_VARIANT)/variants/$(HARDWARE_SUB_VARIANT)
-endif
+
 SRC = wiring.c \
 	wiring_analog.c wiring_digital.c \
 	wiring_pulse.c \
@@ -220,7 +237,13 @@ CXXSRC += LiquidCrystal.cpp ultralcd.cpp SPI.cpp Servo.cpp Tone.cpp
 CXXSRC += UltiLCD2.cpp UltiLCD2_gfx.cpp UltiLCD2_hi_lib.cpp UltiLCD2_low_lib.cpp \
 	UltiLCD2_menu_first_run.cpp UltiLCD2_menu_maintenance.cpp UltiLCD2_menu_material.cpp \
 	UltiLCD2_menu_print.cpp lifetime_stats.cpp i2c_capacitance.cpp i2c_driver.cpp \
-	fan_driver.cpp temperature_ADS101X.cpp
+	fan_driver.cpp temperature_ADS101X.cpp i2c_fiset_driver.cpp
+
+ifeq ( $(HARDWARE_VARIANT), arduino)
+	ifeq ($(shell [ $(ARDUINO_VERSION) -ge 150 ] && echo true), true)
+		CXXSRC += hooks.cpp
+	endif
+endif
 
 #Check for Arduino 1.0.0 or higher and use the correct sourcefiles for that version
 ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
