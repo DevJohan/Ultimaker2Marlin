@@ -38,6 +38,7 @@
 #include "temperature_ADS101X.h"
 #include "fan_driver.h"
 #include "Sd2Card.h"
+#include "i2c_fiset_driver.h"
 
 //===========================================================================
 //=============================public variables============================
@@ -1387,6 +1388,16 @@ ISR(TIMER0_COMPB_vect)
     }
 #endif
   }
+    static uint8_t fiset_age = 0;
+    if( ++fiset_age > 8 ){
+    	fiset_age = 0;
+    	plan_read_fiset();
+    }
+//    else if( fiset_data_ready() ){
+//    	int16_t fiset_value = get_fiset_data();
+//    	MYSERIAL.print(fiset_value,10);
+//    	MYSERIAL.println();
+//    }
 }
 
 #ifdef PIDTEMP

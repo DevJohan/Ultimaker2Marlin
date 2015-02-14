@@ -11,26 +11,49 @@ static const uint8_t fiset_cond_lo_addr  = 0xfd;
 static const uint8_t fiset_value_hi_addr = 0xfe;
 static const uint8_t fiset_value_lo_addr = 0xff;
 
-static i2cCommand issue_read_fiset_cond_command;
-static uint8_t issue_read_fiset_cond_buffer[1];
-static i2cCommand read_fiset_cond_command;
-static uint8_t read_fiset_cond_buffer[2];
 
-static i2cCommand issue_read_fiset_value_command;
-static uint8_t issue_read_fiset_value_buffer[1];
-static i2cCommand read_fiset_value_command;
-static uint8_t read_fiset_value_buffer[2];
+static i2cCommand issue_fiset_read_all_command;
+static uint8_t issue_fiset_read_all_buffer[1];
+static i2cCommand fiset_read_all_command;
+static uint8_t fiset_read_all_buffer[ fiset_value_lo_addr + 1 - fiset_gain_addr ];
 
+static bool fiset_data_read;
 
-void InitFiset(){
+void fiset_init(){
+	fiset_data_read = true;
 
-	issue_read_fiset_cond_buffer[0] = fiset_cond_hi_addr;
-	i2cDriverCommandSetup(issue_read_fiset_cond_command, fiset_address | i2cWriteBit, fiset_priority, issue_read_fiset_cond_buffer, sizeof(issue_read_fiset_cond_buffer));
-	i2cDriverCommandSetup(read_fiset_cond_command, fiset_address | i2cReadBit, fiset_priority, read_fiset_cond_buffer, sizeof(read_fiset_cond_buffer));
-
-	issue_read_fiset_cond_buffer[0] = fiset_value_hi_addr;
-	i2cDriverCommandSetup(issue_read_fiset_value_command, fiset_address | i2cWriteBit, fiset_priority, issue_read_fiset_value_buffer, sizeof(issue_read_fiset_value_buffer));
-	i2cDriverCommandSetup(read_fiset_value_command, fiset_address | i2cReadBit, fiset_priority, read_fiset_value_buffer, sizeof(read_fiset_value_buffer));
+	issue_fiset_read_all_buffer[0] = fiset_gain_addr;
+	i2cDriverCommandSetup(issue_fiset_read_all_command, (fiset_address << 1 ) | i2cWriteBit, fiset_priority, issue_fiset_read_all_buffer, sizeof(issue_fiset_read_all_buffer));
+	i2cDriverCommandSetup(fiset_read_all_command, (fiset_address << 1) | i2cReadBit, fiset_priority, fiset_read_all_buffer, sizeof(fiset_read_all_buffer));
 
 }
 
+void plan_read_fiset(){
+	fiset_data_read = false;
+	i2cDriverPlan( &issue_fiset_read_all_command );
+	i2cDriverPlan( &fiset_read_all_command );
+}
+
+bool fiset_data_ready(){
+	return  !fiset_data_read &&
+			issue_fiset_read_all_command.finished &&
+			fiset_read_all_command.finished;
+}
+
+int16_t get_fiset_data(){
+	fiset_data_read = true;
+	return
+			(0xff & fiset_read_all_buffer[4])<<8 |
+			(0xff & fiset_read_all_buffer[5])<<2;
+}
+
+uint8_t get_fiset_gain(){
+	return
+			fiset_read_all_buffer[0];
+}
+
+uint16_t get_fiset_magnitude(){
+	return
+			(0xff & fiset_read_all_buffer[2])<<8 |
+			(0xff & fiset_read_all_buffer[3])<<2;
+}

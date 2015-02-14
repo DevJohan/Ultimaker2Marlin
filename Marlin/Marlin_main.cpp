@@ -44,6 +44,7 @@
 #include "pins_arduino.h"
 #include "i2c_driver.h"
 #include "i2c_capacitance.h"
+#include "i2c_fiset_driver.h"
 #include "fan_driver.h"
 
 #if NUM_SERVOS > 0
@@ -486,6 +487,7 @@ void setup()
 #ifdef ENABLE_BED_LEVELING_PROBE
   i2cCapacitanceInit();
 #endif
+  fiset_init();
   
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
@@ -495,6 +497,15 @@ void setup()
 
 void loop()
 {
+  if(fiset_data_ready()){
+	  MYSERIAL.print("Fiset: ");
+	  MYSERIAL.print( get_fiset_gain(), DEC );
+	  MYSERIAL.print(" ");
+	  MYSERIAL.print( get_fiset_magnitude(), DEC );
+	  MYSERIAL.print(" ");
+	  MYSERIAL.println( get_fiset_data(), DEC );
+  }
+
   if(buflen < (BUFSIZE-1))
     get_command();
   #ifdef SDSUPPORT
