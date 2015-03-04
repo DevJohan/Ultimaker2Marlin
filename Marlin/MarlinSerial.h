@@ -48,12 +48,14 @@
 #define M_RXENx SERIAL_REGNAME(RXEN,SERIAL_PORT,)
 #define M_TXENx SERIAL_REGNAME(TXEN,SERIAL_PORT,)
 #define M_RXCIEx SERIAL_REGNAME(RXCIE,SERIAL_PORT,)
+#define M_UDRIEx SERIAL_REGNAME(UDRIE,SERIAL_PORT,)
 #define M_UDREx SERIAL_REGNAME(UDRE,SERIAL_PORT,)
 #define M_UDRx SERIAL_REGNAME(UDR,SERIAL_PORT,)
 #define M_UBRRxH SERIAL_REGNAME(UBRR,SERIAL_PORT,H)
 #define M_UBRRxL SERIAL_REGNAME(UBRR,SERIAL_PORT,L)
 #define M_RXCx SERIAL_REGNAME(RXC,SERIAL_PORT,)
 #define M_USARTx_RX_vect SERIAL_REGNAME(USART,SERIAL_PORT,_RX_vect)
+#define M_USARTx_UDRE_vect SERIAL_REGNAME(USART,SERIAL_PORT,_UDRE_vect)
 #define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
 
 
@@ -71,7 +73,7 @@
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
 #define RX_BUFFER_SIZE 128
-
+#define TX_BUFFER_SIZE 64
 
 struct ring_buffer
 {
@@ -80,9 +82,19 @@ struct ring_buffer
   int tail;
 };
 
+struct tx_ring_buffer
+{
+  unsigned char buffer[TX_BUFFER_SIZE];
+  int head;
+  int tail;
+};
+
 #if UART_PRESENT(SERIAL_PORT)
   extern ring_buffer rx_buffer;
 #endif
+
+  extern tx_ring_buffer tx_buffer;
+
 
 class MarlinSerial //: public Stream
 {
@@ -100,14 +112,35 @@ class MarlinSerial //: public Stream
       return (unsigned int)(RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) % RX_BUFFER_SIZE;
     }
 
-    FORCE_INLINE void write(uint8_t c)
-    {
-      while (!((M_UCSRxA) & (1 << M_UDREx)))
-        ;
-
-      M_UDRx = c;
+    FORCE_INLINE void write_blocking(){
+    	critical_section_guard lock;
+    	if(tx_buffer.tail != tx_buffer.head){
+    		while(!((M_UCSRxA) & (1 << M_UDREx)));
+    		M_UDRx = tx_buffer.buffer[tx_buffer.tail];
+    		tx_buffer.tail = ( tx_buffer.tail + 1 ) % TX_BUFFER_SIZE;
+    	}
     }
 
+    FORCE_INLINE void write(uint8_t c)
+    {
+    	int i = (unsigned int)(tx_buffer.head + 1) % TX_BUFFER_SIZE;
+    	if( i == tx_buffer.tail )
+    		write_blocking();
+    	tx_buffer.buffer[tx_buffer.head] = c;
+    	tx_buffer.head = i;
+    	sbi(M_UCSRxB, M_UDRIEx);
+    }
+
+    FORCE_INLINE void checkTx(){
+    	if(tx_buffer.tail != tx_buffer.head){
+    		critical_section_guard lock;
+    		if(((M_UCSRxA) & (1 << M_UDREx))){
+    			M_UDRx = tx_buffer.buffer[tx_buffer.tail];
+    			tx_buffer.tail = ( tx_buffer.tail + 1 ) % TX_BUFFER_SIZE;
+    		}
+    	}else
+    		cbi(M_UCSRxB, M_UDRIEx);
+    }
 
     FORCE_INLINE void checkRx(void)
     {

@@ -34,14 +34,24 @@
 # define analogInputToDigitalPin(p) ((p) + A0)
 #endif
 
-#include "MarlinSerial.h"
-
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
+
+class critical_section_guard{
+critical_section_guard(const critical_section_guard&);
+critical_section_guard& operator = (const critical_section_guard&);
+public:
+critical_section_guard():_sreg(SREG) { cli(); }
+~critical_section_guard(){ SREG = _sreg; }
+private:
+	unsigned char _sreg;
+};
+
+#include "MarlinSerial.h"
 
 #include "WString.h"
 

@@ -14,12 +14,16 @@
 #endif
 
 static uint8_t current_command_buffer_index;
+static uint8_t volatile current_sequence_no;
 static i2cCommand* volatile current_command;
 static i2cCommand* volatile command_queue;
 
 void i2cDriverInit()
 {
-    //Set the pins high as we are bus master.
+	current_command = NULL;
+	command_queue = NULL;
+
+	//Set the pins high as we are bus master.
     SET_OUTPUT(I2C_SDA_PIN);
     SET_OUTPUT(I2C_SCL_PIN);
     //TODO: We could generate a fake stop condition here.
@@ -38,16 +42,27 @@ void i2cDriverInit()
 static void i2cDriverExecuteNextCommand()
 {
     //Called from interrupt context
-    if (command_queue)
-    {
-        current_command = command_queue;
-        command_queue = command_queue->next;
-        current_command_buffer_index = 0;
-        TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTA) | _BV(TWINT); //START will be transmitted, interrupt will be generated.
-    }else{
-        current_command = NULL;
-        TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTO) | _BV(TWINT); //STOP condition will be transmitted and TWSTO Flag will be reset
-    }
+	++current_sequence_no;
+	if(current_sequence_no < current_command->command_sequence_size){
+		current_command_buffer_index = 0;
+		TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTA) | _BV(TWINT); //START will be transmitted, interrupt will be generated.
+	}else{
+		current_command->finished = true;
+		/* This might be better suited for non interrupt context */
+		if(current_command->finnish_callback)
+			current_command->finnish_callback( current_command );
+		/*********************************************************/
+		if(command_queue) {
+			current_command = command_queue;
+			command_queue = command_queue->next;
+			current_sequence_no = 0;
+			current_command_buffer_index = 0;
+			TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTA) | _BV(TWINT); //START will be transmitted, interrupt will be generated.
+		}else{
+			current_command = NULL;
+			TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTO) | _BV(TWINT); //STOP condition will be transmitted and TWSTO Flag will be reset
+		}
+	}
 }
 
 void i2cDriverPlan(i2cCommand* command)
@@ -66,6 +81,7 @@ void i2cDriverPlan(i2cCommand* command)
             loop_until_bit_is_clear(TWCR, TWSTO);
             
             current_command = command;
+            current_sequence_no = 0;
             current_command_buffer_index = 0;
             TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWSTA) | _BV(TWINT); //START will be transmitted, interrupt will be generated.
         }else{
@@ -105,6 +121,7 @@ ISR(TWI_vect, ISR_BLOCK)
     //Called after the TWI has received a data byte
     //Called after a STOP or REPEATED START has been received while still addressed as a Slave
     //Called when a bus error has occurred due to an illegal START or STOP condition
+	i2cCommandSequence& current_part = current_command->command_sequence[current_sequence_no];
     switch(TW_STATUS)
     {
         /* Master */
@@ -112,7 +129,7 @@ ISR(TWI_vect, ISR_BLOCK)
     case TW_REP_START: //0x10
         /** start condition transmitted */
         /** repeated start condition transmitted */
-        TWDR = current_command->slave_address_rw;
+        TWDR = current_part.slave_address_rw;
         TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWINT); //SLA+R/W will be transmitted. Depending on R/W, will be in transmit or receive.
         break;
         /* Master Transmitter */
@@ -124,13 +141,12 @@ ISR(TWI_vect, ISR_BLOCK)
         /** SLA+W transmitted, NACK received */
         /** data transmitted, ACK received */
         /** data transmitted, NACK received */
-        if (current_command_buffer_index < current_command->buffer_size)
+        if (current_command_buffer_index < current_part.buffer_size)
         {
-            TWDR = current_command->buffer[current_command_buffer_index++];
+            TWDR = current_part.buffer[current_command_buffer_index++];
             TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWINT); //Data byte will be transmitted and ACK or NOT ACK will be received
         }else{
             //i2cDriverExecuteNextCommand will initiate a repeated START or a normal STOP action.
-            current_command->finished = true;
             i2cDriverExecuteNextCommand();
         }
         break;
@@ -142,21 +158,23 @@ ISR(TWI_vect, ISR_BLOCK)
     case TW_MR_SLA_NACK: //0x48
         /** SLA+R transmitted, NACK received */
         //Failed to address slave. Clear the buffer and mark command as finished.
-        memset(current_command->buffer, 0xFF, current_command->buffer_size);
-        current_command->finished = true;
+        memset(current_part.buffer, 0xFF, current_part.buffer_size);
+        //i2cDriverExecuteNextCommand will initiate a repeated START or a normal STOP action.
         i2cDriverExecuteNextCommand();
         break;
     case TW_MR_DATA_ACK: //0x50
     case TW_MR_DATA_NACK: //0x58
         /** data received, ACK returned */
         /** data received, NACK returned */
-        current_command->buffer[current_command_buffer_index++] = TWDR;
-        if (current_command_buffer_index < current_command->buffer_size)
-        {
-            TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWINT) | _BV(TWEA); //Data byte will be received and ACK will be returned
+    	current_part.buffer[current_command_buffer_index++] = TWDR;
+        if (current_command_buffer_index + 1 < current_part.buffer_size){
+        	//Data byte will be received and ACK will be returned
+            TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWINT) | _BV(TWEA);
+        }else if (current_command_buffer_index < current_part.buffer_size){
+        	//Last byte to receive, data byte will be received and NACK will be returned
+            TWCR = _BV(TWIE) | _BV(TWEN) | _BV(TWINT);
         }else{
             //i2cDriverExecuteNextCommand will initiate a repeated START or a normal STOP action.
-            current_command->finished = true;
             i2cDriverExecuteNextCommand();
         }
         break;

@@ -32,6 +32,8 @@
   ring_buffer rx_buffer  =  { { 0 }, 0, 0 };
 #endif
 
+  tx_ring_buffer tx_buffer  =  { { 0 }, 0, 0 };
+
 FORCE_INLINE void store_char(unsigned char c)
 {
   int i = (unsigned int)(rx_buffer.head + 1) % RX_BUFFER_SIZE;
@@ -57,6 +59,14 @@ FORCE_INLINE void store_char(unsigned char c)
     store_char(c);
   }
 #endif
+
+  ISR( M_USARTx_UDRE_vect ){
+	  if(tx_buffer.tail != tx_buffer.head){
+		  M_UDRx = tx_buffer.buffer[tx_buffer.tail];
+		  tx_buffer.tail = ( tx_buffer.tail + 1 ) % TX_BUFFER_SIZE;
+	  }else
+		  cbi(M_UCSRxB, M_UDRIEx);
+  }
 
 // Constructors ////////////////////////////////////////////////////////////////
 
@@ -96,6 +106,7 @@ void MarlinSerial::begin(long baud)
   sbi(M_UCSRxB, M_RXENx);
   sbi(M_UCSRxB, M_TXENx);
   sbi(M_UCSRxB, M_RXCIEx);
+  sbi(M_UCSRxB, M_UDRIEx);
 }
 
 void MarlinSerial::end()
@@ -103,6 +114,7 @@ void MarlinSerial::end()
   cbi(M_UCSRxB, M_RXENx);
   cbi(M_UCSRxB, M_TXENx);
   cbi(M_UCSRxB, M_RXCIEx);
+  cbi(M_UCSRxB, M_UDRIEx);
 }
 
 

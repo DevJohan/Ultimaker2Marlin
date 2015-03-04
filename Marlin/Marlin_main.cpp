@@ -498,7 +498,9 @@ void setup()
 void loop()
 {
   if(fiset_data_ready()){
-	  MYSERIAL.print("Fiset: ");
+	  MYSERIAL.print("Fiset no ");
+	  MYSERIAL.print( get_fiset_data_count(), DEC );
+	  MYSERIAL.print(": ");
 	  MYSERIAL.print( get_fiset_gain(), DEC );
 	  MYSERIAL.print(" ");
 	  MYSERIAL.print( get_fiset_magnitude(), DEC );

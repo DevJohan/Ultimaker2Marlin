@@ -1393,11 +1393,6 @@ ISR(TIMER0_COMPB_vect)
     	fiset_age = 0;
     	plan_read_fiset();
     }
-//    else if( fiset_data_ready() ){
-//    	int16_t fiset_value = get_fiset_data();
-//    	MYSERIAL.print(fiset_value,10);
-//    	MYSERIAL.println();
-//    }
 }
 
 #ifdef PIDTEMP
