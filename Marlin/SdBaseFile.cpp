@@ -343,38 +343,38 @@ int8_t SdBaseFile::lsPrintNext( uint8_t flags, uint8_t indent) {
       && DIR_IS_FILE_OR_SUBDIR(&dir)) break;
   }
   // indent for dir level
-  for (uint8_t i = 0; i < indent; i++) MYSERIAL.write(' ');
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          for (uint8_t i = 0; i < indent; i++) MYSERIAL.write(' ');
 
   // print name
   for (uint8_t i = 0; i < 11; i++) {
     if (dir.name[i] == ' ')continue;
     if (i == 8) {
-      MYSERIAL.write('.');
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('.');
       w++;
     }
-    MYSERIAL.write(dir.name[i]);
+    //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(dir.name[i]);
     w++;
   }
   if (DIR_IS_SUBDIR(&dir)) {
-    MYSERIAL.write('/');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('/');
     w++;
   }
   if (flags & (LS_DATE | LS_SIZE)) {
-    while (w++ < 14) MYSERIAL.write(' ');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          while (w++ < 14) MYSERIAL.write(' ');
   }
   // print modify date/time if requested
   if (flags & LS_DATE) {
-    MYSERIAL.write(' ');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(' ');
     printFatDate( dir.lastWriteDate);
-    MYSERIAL.write(' ');
+    //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(' ');
     printFatTime( dir.lastWriteTime);
   }
   // print size if requested
   if (!DIR_IS_SUBDIR(&dir) && (flags & LS_SIZE)) {
-    MYSERIAL.write(' ');
-    MYSERIAL.print(dir.fileSize);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(' ');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.print(dir.fileSize);
   }
-  MYSERIAL.println();
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.println();
   return DIR_IS_FILE(&dir) ? 1 : 2;
 }
 //------------------------------------------------------------------------------
@@ -945,26 +945,26 @@ void SdBaseFile::printDirName(const dir_t& dir,
   for (uint8_t i = 0; i < 11; i++) {
     if (dir.name[i] == ' ')continue;
     if (i == 8) {
-      MYSERIAL.write('.');
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('.');
       w++;
     }
-    MYSERIAL.write(dir.name[i]);
+    //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(dir.name[i]);
     w++;
   }
   if (DIR_IS_SUBDIR(&dir) && printSlash) {
-    MYSERIAL.write('/');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('/');
     w++;
   }
   while (w < width) {
-    MYSERIAL.write(' ');
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(' ');
     w++;
   }
 }
 //------------------------------------------------------------------------------
 // print uint8_t with width 2
 static void print2u( uint8_t v) {
-  if (v < 10) MYSERIAL.write('0');
-  MYSERIAL.print(v, DEC);
+	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          if (v < 10) MYSERIAL.write('0');
+	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.print(v, DEC);
 }
 //------------------------------------------------------------------------------
 /** %Print a directory date field to Serial.
@@ -983,10 +983,10 @@ static void print2u( uint8_t v) {
  * \param[in] fatDate The date field from a directory entry.
  */
 void SdBaseFile::printFatDate(uint16_t fatDate) {
-  MYSERIAL.print(FAT_YEAR(fatDate));
-  MYSERIAL.write('-');
+	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.print(FAT_YEAR(fatDate));
+	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('-');
   print2u( FAT_MONTH(fatDate));
-  MYSERIAL.write('-');
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write('-');
   print2u( FAT_DAY(fatDate));
 }
 
@@ -1000,9 +1000,9 @@ void SdBaseFile::printFatDate(uint16_t fatDate) {
  */
 void SdBaseFile::printFatTime( uint16_t fatTime) {
   print2u( FAT_HOUR(fatTime));
-  MYSERIAL.write(':');
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(':');
   print2u( FAT_MINUTE(fatTime));
-  MYSERIAL.write(':');
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.write(':');
   print2u( FAT_SECOND(fatTime));
 }
 //------------------------------------------------------------------------------
@@ -1014,7 +1014,7 @@ void SdBaseFile::printFatTime( uint16_t fatTime) {
 bool SdBaseFile::printName() {
   char name[13];
   if (!getFilename(name)) return false;
-  MYSERIAL.print(name);
+  //TODO:FIX_SD_CARD_SERIAL_MESSAGES          MYSERIAL.print(name);
   return true;
 }
 //------------------------------------------------------------------------------

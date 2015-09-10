@@ -517,6 +517,8 @@ void check_axes_activity()
 
 
 float junction_deviation = 0.1;
+
+
 // Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
@@ -539,36 +541,34 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   // Calculate target position in absolute steps
   //this should be done after the wait, because otherwise a M92 code within the gcode disrupts this calculation somehow
   long target[4];
-  target[X_AXIS] = lround(x*axis_steps_per_unit[X_AXIS]);
-  target[Y_AXIS] = lround(y*axis_steps_per_unit[Y_AXIS]);
+  target[to_index(Axes::X)] = lround(x*axis_steps_per_unit[to_index(Axes::X)]);
+  target[to_index(Axes::Y)] = lround(y*axis_steps_per_unit[to_index(Axes::Y)]);
 #ifdef ENABLE_BED_LEVELING_PROBE
   float bed_leveling_factor = 0.0;
   if (z < CONFIG_FALL_OFF_BED_LEVELING_HEIGHT)
     bed_leveling_factor = 1.0;
   else if (z < CONFIG_MAX_BED_LEVELING_HEIGHT)
     bed_leveling_factor = (z - CONFIG_FALL_OFF_BED_LEVELING_HEIGHT) / (CONFIG_MAX_BED_LEVELING_HEIGHT - CONFIG_FALL_OFF_BED_LEVELING_HEIGHT);
-  target[Z_AXIS] = lround((z+bed_leveling_factor*(x*planner_bed_leveling_factor[X_AXIS]+y*planner_bed_leveling_factor[Y_AXIS]))*axis_steps_per_unit[Z_AXIS]);
+  target[to_index(Axes::Z)] = lround((z+bed_leveling_factor*(x*planner_bed_leveling_factor[to_index(Axes::X)]+y*planner_bed_leveling_factor[to_index(Axes::Y)]))*axis_steps_per_unit[to_index(Axes::Z)]);
 #else
-  target[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
+  target[to_index(Axes::Z)] = lround(z*axis_steps_per_unit[to_index(Axes::Z)]);
 #endif
-  target[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[extruder]);
+  target[to_index(Axes::E)] = lround(e*axis_steps_per_unit[to_index(Axes::E)]*volume_to_filament_length[extruder]);
 
   #ifdef PREVENT_DANGEROUS_EXTRUDE
-  if(target[E_AXIS]!=position[E_AXIS])
+  if(target[to_index(Axes::E)]!=position[to_index(Axes::E)])
   {
     if(degHotend(extruder)<extrude_min_temp)
     {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
-      SERIAL_ECHO_START;
-      SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
+      position[to_index(Axes::E)]=target[to_index(Axes::E)]; //behave as if the move really took place, but ignore E part
+			report_cold_extrusion_prevented();
     }
 
     #ifdef PREVENT_LENGTHY_EXTRUDE
-    if(labs(target[E_AXIS]-position[E_AXIS])>axis_steps_per_unit[E_AXIS]*EXTRUDE_MAXLENGTH)
+    if(labs(target[to_index(Axes::E)]-position[to_index(Axes::E)])>axis_steps_per_unit[to_index(Axes::E)]*EXTRUDE_MAXLENGTH)
     {
-      position[E_AXIS]=target[E_AXIS]; //behave as if the move really took place, but ignore E part
-      SERIAL_ECHO_START;
-      SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
+      position[to_index(Axes::E)]=target[to_index(Axes::E)]; //behave as if the move really took place, but ignore E part
+			report_too_long_extrusion_prevented();
     }
     #endif
   }
@@ -583,16 +583,16 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   // Number of steps for each axis
 #ifndef COREXY
 // default non-h-bot planning
-block->steps_x = labs(target[X_AXIS]-position[X_AXIS]);
-block->steps_y = labs(target[Y_AXIS]-position[Y_AXIS]);
+block->steps_x = labs(target[to_index(Axes::X)]-position[to_index(Axes::X)]);
+block->steps_y = labs(target[to_index(Axes::Y)]-position[to_index(Axes::Y)]);
 #else
 // corexy planning
 // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
-block->steps_x = labs((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]));
-block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]));
+block->steps_x = labs((target[to_index(Axes::X)]-position[to_index(Axes::X)]) + (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]));
+block->steps_y = labs((target[to_index(Axes::X)]-position[to_index(Axes::X)]) - (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]));
 #endif
-  block->steps_z = labs(target[Z_AXIS]-position[Z_AXIS]);
-  block->steps_e = labs(target[E_AXIS]-position[E_AXIS]);
+  block->steps_z = labs(target[to_index(Axes::Z)]-position[to_index(Axes::Z)]);
+  block->steps_e = labs(target[to_index(Axes::E)]-position[to_index(Axes::E)]);
   block->steps_e *= extrudemultiply[extruder];
   block->steps_e /= 100;
   block->step_event_count = max(block->steps_x, max(block->steps_y, max(block->steps_z, block->steps_e)));
@@ -612,31 +612,31 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   // Compute direction bits for this block
   block->direction_bits = 0;
 #ifndef COREXY
-  if (target[X_AXIS] < position[X_AXIS])
+  if (target[to_index(Axes::X)] < position[to_index(Axes::X)])
   {
-    block->direction_bits |= (1<<X_AXIS);
+    block->direction_bits |= (axis_mask(Axes::X));
   }
-  if (target[Y_AXIS] < position[Y_AXIS])
+  if (target[to_index(Axes::Y)] < position[to_index(Axes::Y)])
   {
-    block->direction_bits |= (1<<Y_AXIS);
+    block->direction_bits |= (axis_mask(Axes::Y));
   }
 #else
-  if ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]) < 0)
+  if ((target[to_index(Axes::X)]-position[to_index(Axes::X)]) + (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]) < 0)
   {
-    block->direction_bits |= (1<<X_AXIS);
+    block->direction_bits |= (axis_mask(Axes::X));
   }
-  if ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]) < 0)
+  if ((target[to_index(Axes::X)]-position[to_index(Axes::X)]) - (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]) < 0)
   {
-    block->direction_bits |= (1<<Y_AXIS);
+    block->direction_bits |= (axis_mask(Axes::Y));
   }
 #endif
-  if (target[Z_AXIS] < position[Z_AXIS])
+  if (target[to_index(Axes::Z)] < position[to_index(Axes::Z)])
   {
-    block->direction_bits |= (1<<Z_AXIS);
+    block->direction_bits |= (axis_mask(Axes::Z));
   }
-  if (target[E_AXIS] < position[E_AXIS])
+  if (target[to_index(Axes::E)] < position[to_index(Axes::E)])
   {
-    block->direction_bits |= (1<<E_AXIS);
+    block->direction_bits |= (axis_mask(Axes::E));
   }
 
   block->active_extruder = extruder;
@@ -675,21 +675,21 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
 
   float delta_mm[4];
   #ifndef COREXY
-    delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/axis_steps_per_unit[Y_AXIS];
+    delta_mm[to_index(Axes::X)] = (target[to_index(Axes::X)]-position[to_index(Axes::X)])/axis_steps_per_unit[to_index(Axes::X)];
+    delta_mm[to_index(Axes::Y)] = (target[to_index(Axes::Y)]-position[to_index(Axes::Y)])/axis_steps_per_unit[to_index(Axes::Y)];
   #else
-    delta_mm[X_AXIS] = ((target[X_AXIS]-position[X_AXIS]) + (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[X_AXIS];
-    delta_mm[Y_AXIS] = ((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-position[Y_AXIS]))/axis_steps_per_unit[Y_AXIS];
+    delta_mm[to_index(Axes::X)] = ((target[to_index(Axes::X)]-position[to_index(Axes::X)]) + (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]))/axis_steps_per_unit[to_index(Axes::X)];
+    delta_mm[to_index(Axes::Y)] = ((target[to_index(Axes::X)]-position[to_index(Axes::X)]) - (target[to_index(Axes::Y)]-position[to_index(Axes::Y)]))/axis_steps_per_unit[to_index(Axes::Y)];
   #endif
-  delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/axis_steps_per_unit[Z_AXIS];
-  delta_mm[E_AXIS] = ((target[E_AXIS]-position[E_AXIS])/axis_steps_per_unit[E_AXIS])*extrudemultiply[extruder]/100.0;
+  delta_mm[to_index(Axes::Z)] = (target[to_index(Axes::Z)]-position[to_index(Axes::Z)])/axis_steps_per_unit[to_index(Axes::Z)];
+  delta_mm[to_index(Axes::E)] = ((target[to_index(Axes::E)]-position[to_index(Axes::E)])/axis_steps_per_unit[to_index(Axes::E)])*extrudemultiply[extruder]/100.0;
   if ( block->steps_x <=dropsegments && block->steps_y <=dropsegments && block->steps_z <=dropsegments )
   {
-    block->millimeters = fabs(delta_mm[E_AXIS]);
+    block->millimeters = fabs(delta_mm[to_index(Axes::E)]);
   }
   else
   {
-    block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + square(delta_mm[Z_AXIS]));
+    block->millimeters = sqrt(square(delta_mm[to_index(Axes::X)]) + square(delta_mm[to_index(Axes::Y)]) + square(delta_mm[to_index(Axes::Z)]));
   }
   float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides
 
@@ -742,7 +742,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   old_direction_bits = block->direction_bits;
   segment_time = lround((float)segment_time / speed_factor);
 
-  if((direction_change & (1<<X_AXIS)) == 0)
+  if((direction_change & (axis_mask(Axes::X))) == 0)
   {
     x_segment_time[0] += segment_time;
   }
@@ -752,7 +752,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
     x_segment_time[1] = x_segment_time[0];
     x_segment_time[0] = segment_time;
   }
-  if((direction_change & (1<<Y_AXIS)) == 0)
+  if((direction_change & (axis_mask(Axes::Y))) == 0)
   {
     y_segment_time[0] += segment_time;
   }
@@ -790,14 +790,14 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   {
     block->acceleration_st = ceil(acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
     // Limit acceleration per axis
-    if(((float)block->acceleration_st * (float)block->steps_x / (float)block->step_event_count) > axis_steps_per_sqr_second[X_AXIS])
-      block->acceleration_st = axis_steps_per_sqr_second[X_AXIS];
-    if(((float)block->acceleration_st * (float)block->steps_y / (float)block->step_event_count) > axis_steps_per_sqr_second[Y_AXIS])
-      block->acceleration_st = axis_steps_per_sqr_second[Y_AXIS];
-    if(((float)block->acceleration_st * (float)block->steps_e / (float)block->step_event_count) > axis_steps_per_sqr_second[E_AXIS])
-      block->acceleration_st = axis_steps_per_sqr_second[E_AXIS];
-    if(((float)block->acceleration_st * (float)block->steps_z / (float)block->step_event_count ) > axis_steps_per_sqr_second[Z_AXIS])
-      block->acceleration_st = axis_steps_per_sqr_second[Z_AXIS];
+    if(((float)block->acceleration_st * (float)block->steps_x / (float)block->step_event_count) > axis_steps_per_sqr_second[to_index(Axes::X)])
+      block->acceleration_st = axis_steps_per_sqr_second[to_index(Axes::X)];
+    if(((float)block->acceleration_st * (float)block->steps_y / (float)block->step_event_count) > axis_steps_per_sqr_second[to_index(Axes::Y)])
+      block->acceleration_st = axis_steps_per_sqr_second[to_index(Axes::Y)];
+    if(((float)block->acceleration_st * (float)block->steps_e / (float)block->step_event_count) > axis_steps_per_sqr_second[to_index(Axes::E)])
+      block->acceleration_st = axis_steps_per_sqr_second[to_index(Axes::E)];
+    if(((float)block->acceleration_st * (float)block->steps_z / (float)block->step_event_count ) > axis_steps_per_sqr_second[to_index(Axes::Z)])
+      block->acceleration_st = axis_steps_per_sqr_second[to_index(Axes::Z)];
   }
   block->acceleration = block->acceleration_st / steps_per_mm;
   block->acceleration_rate = (long)((float)block->acceleration_st * (16777216.0 / (F_CPU / 8.0)));
@@ -806,9 +806,9 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   // Compute path unit vector
   double unit_vec[3];
 
-  unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
-  unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
-  unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inverse_millimeters;
+  unit_vec[to_index(Axes::X)] = delta_mm[to_index(Axes::X)]*inverse_millimeters;
+  unit_vec[to_index(Axes::Y)] = delta_mm[to_index(Axes::Y)]*inverse_millimeters;
+  unit_vec[to_index(Axes::Z)] = delta_mm[to_index(Axes::Z)]*inverse_millimeters;
 
   // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
   // Let a circle be tangent to both previous and current path line segments, where the junction
@@ -825,9 +825,9 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS]
-      - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS]
-      - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
+    double cos_theta = - previous_unit_vec[to_index(Axes::X)] * unit_vec[to_index(Axes::X)]
+      - previous_unit_vec[to_index(Axes::Y)] * unit_vec[to_index(Axes::Y)]
+      - previous_unit_vec[to_index(Axes::Z)] * unit_vec[to_index(Axes::Z)] ;
 
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
@@ -845,26 +845,26 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   // Start with a safe speed
   float vmax_junction = max_xy_jerk/2;
   float vmax_junction_factor = 1.0;
-  if(fabs(current_speed[Z_AXIS]) > max_z_jerk/2)
+  if(fabs(current_speed[to_index(Axes::Z)]) > max_z_jerk/2)
     vmax_junction = min(vmax_junction, max_z_jerk/2);
-  if(fabs(current_speed[E_AXIS]) > max_e_jerk/2)
+  if(fabs(current_speed[to_index(Axes::E)]) > max_e_jerk/2)
     vmax_junction = min(vmax_junction, max_e_jerk/2);
   vmax_junction = min(vmax_junction, block->nominal_speed);
   float safe_speed = vmax_junction;
 
   if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
-    float xy_jerk = sqrt(square(current_speed[X_AXIS]-previous_speed[X_AXIS])+square(current_speed[Y_AXIS]-previous_speed[Y_AXIS]));
+    float xy_jerk = sqrt(square(current_speed[to_index(Axes::X)]-previous_speed[to_index(Axes::X)])+square(current_speed[to_index(Axes::Y)]-previous_speed[to_index(Axes::Y)]));
     //    if((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
     vmax_junction = block->nominal_speed;
     //    }
     if (xy_jerk > max_xy_jerk) {
       vmax_junction_factor = (max_xy_jerk/xy_jerk);
     }
-    if(fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS]) > max_z_jerk) {
-      vmax_junction_factor= min(vmax_junction_factor, (max_z_jerk/fabs(current_speed[Z_AXIS] - previous_speed[Z_AXIS])));
+    if(fabs(current_speed[to_index(Axes::Z)] - previous_speed[to_index(Axes::Z)]) > max_z_jerk) {
+      vmax_junction_factor= min(vmax_junction_factor, (max_z_jerk/fabs(current_speed[to_index(Axes::Z)] - previous_speed[to_index(Axes::Z)])));
     }
-    if(fabs(current_speed[E_AXIS] - previous_speed[E_AXIS]) > max_e_jerk) {
-      vmax_junction_factor = min(vmax_junction_factor, (max_e_jerk/fabs(current_speed[E_AXIS] - previous_speed[E_AXIS])));
+    if(fabs(current_speed[to_index(Axes::E)] - previous_speed[to_index(Axes::E)]) > max_e_jerk) {
+      vmax_junction_factor = min(vmax_junction_factor, (max_e_jerk/fabs(current_speed[to_index(Axes::E)] - previous_speed[to_index(Axes::E)])));
     }
     vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
   }
@@ -904,7 +904,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   else {
     long acc_dist = estimate_acceleration_distance(0, block->nominal_rate, block->acceleration_st);
     float advance = (STEPS_PER_CUBIC_MM_E * EXTRUDER_ADVANCE_K) *
-      (current_speed[E_AXIS] * current_speed[E_AXIS] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
+      (current_speed[to_index(Axes::E)] * current_speed[to_index(Axes::E)] * EXTRUTION_AREA * EXTRUTION_AREA)*256;
     block->advance = advance;
     if(acc_dist == 0) {
       block->advance_rate = 0;
@@ -937,20 +937,20 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
 
 void plan_set_position(const float &x, const float &y, const float &z, const float &e)
 {
-  position[X_AXIS] = lround(x*axis_steps_per_unit[X_AXIS]);
-  position[Y_AXIS] = lround(y*axis_steps_per_unit[Y_AXIS]);
+  position[to_index(Axes::X)] = lround(x*axis_steps_per_unit[to_index(Axes::X)]);
+  position[to_index(Axes::Y)] = lround(y*axis_steps_per_unit[to_index(Axes::Y)]);
 #ifdef ENABLE_BED_LEVELING_PROBE
   float bed_leveling_factor = 0.0;
   if (z < CONFIG_FALL_OFF_BED_LEVELING_HEIGHT)
     bed_leveling_factor = 1.0;
   else if (z < CONFIG_MAX_BED_LEVELING_HEIGHT)
     bed_leveling_factor = (z - CONFIG_FALL_OFF_BED_LEVELING_HEIGHT) / (CONFIG_MAX_BED_LEVELING_HEIGHT - CONFIG_FALL_OFF_BED_LEVELING_HEIGHT);
-  position[Z_AXIS] = lround((z+bed_leveling_factor*(x*planner_bed_leveling_factor[X_AXIS]+y*planner_bed_leveling_factor[Y_AXIS]))*axis_steps_per_unit[Z_AXIS]);
+  position[to_index(Axes::Z)] = lround((z+bed_leveling_factor*(x*planner_bed_leveling_factor[to_index(Axes::X)]+y*planner_bed_leveling_factor[to_index(Axes::Y)]))*axis_steps_per_unit[to_index(Axes::Z)]);
 #else
-  position[Z_AXIS] = lround(z*axis_steps_per_unit[Z_AXIS]);
+  position[to_index(Axes::Z)] = lround(z*axis_steps_per_unit[to_index(Axes::Z)]);
 #endif
-  position[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[active_extruder]);
-  st_set_position(position[X_AXIS], position[Y_AXIS], position[Z_AXIS], position[E_AXIS]);
+  position[to_index(Axes::E)] = lround(e*axis_steps_per_unit[to_index(Axes::E)]*volume_to_filament_length[active_extruder]);
+  st_set_position(position[to_index(Axes::X)], position[to_index(Axes::Y)], position[to_index(Axes::Z)], position[to_index(Axes::E)]);
   previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
   previous_speed[0] = 0.0;
   previous_speed[1] = 0.0;
@@ -960,8 +960,8 @@ void plan_set_position(const float &x, const float &y, const float &z, const flo
 
 void plan_set_e_position(const float &e)
 {
-  position[E_AXIS] = lround(e*axis_steps_per_unit[E_AXIS]*volume_to_filament_length[active_extruder]);
-  st_set_e_position(position[E_AXIS]);
+  position[to_index(Axes::E)] = lround(e*axis_steps_per_unit[to_index(Axes::E)]*volume_to_filament_length[active_extruder]);
+  st_set_e_position(position[to_index(Axes::E)]);
 }
 
 uint8_t movesplanned()

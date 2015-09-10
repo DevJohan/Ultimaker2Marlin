@@ -65,7 +65,7 @@ void lcd_menu_first_run_init()
 
 static void homeAndParkHeadForCenterAdjustment2()
 {
-    add_homeing[Z_AXIS] = 0;
+    add_homeing[to_index(Axes::Z)] = 0;
     enquecommand_P(PSTR("G28 Z0 X0 Y0"));
     char buffer[32];
     sprintf_P(buffer, PSTR("G1 F%i Z%i X%i Y%i"), int(homing_feedrate[0]), 35, X_MAX_LENGTH/2, Y_MAX_LENGTH - 10);
@@ -124,16 +124,16 @@ static void lcd_menu_first_run_init_3()
 
 static void parkHeadForLeftAdjustment()
 {
-    add_homeing[Z_AXIS] -= current_position[Z_AXIS];
-    current_position[Z_AXIS] = 0;
-    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+    add_homeing[to_index(Axes::Z)] -= current_position[to_index(Axes::Z)];
+    current_position[to_index(Axes::Z)] = 0;
+    plan_set_position(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)]);
 
     char buffer[32];
-    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[X_AXIS]), BED_LEFT_ADJUST_X, BED_LEFT_ADJUST_Y);
+    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[to_index(Axes::X)]), BED_LEFT_ADJUST_X, BED_LEFT_ADJUST_Y);
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
 }
 
@@ -144,10 +144,10 @@ static void lcd_menu_first_run_bed_level_center_adjust()
     if (lcd_lib_encoder_pos == ENCODER_NO_SELECTION)
         lcd_lib_encoder_pos = 0;
 
-    if (printing_state == PRINT_STATE_NORMAL && lcd_lib_encoder_pos != 0 && movesplanned() < 4)
+    if (printing_state == PRINT_STATE::NORMAL && lcd_lib_encoder_pos != 0 && movesplanned() < 4)
     {
-        current_position[Z_AXIS] -= float(lcd_lib_encoder_pos) * 0.05;
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 60, 0);
+        current_position[to_index(Axes::Z)] -= float(lcd_lib_encoder_pos) * 0.05;
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], 60, 0);
     }
     lcd_lib_encoder_pos = 0;
 
@@ -166,11 +166,11 @@ static void lcd_menu_first_run_bed_level_center_adjust()
 static void parkHeadForRightAdjustment()
 {
     char buffer[32];
-    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[X_AXIS]), BED_RIGHT_ADJUST_X, BED_RIGHT_ADJUST_Y);
+    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[to_index(Axes::X)]), BED_RIGHT_ADJUST_X, BED_RIGHT_ADJUST_Y);
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
 }
 
@@ -206,11 +206,11 @@ static void lcd_menu_first_run_bed_level_right_adjust()
 static void parkHeadForCenterAdjustment()
 {
     char buffer[32];
-    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z5"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[X_AXIS]), X_MAX_LENGTH / 2, Y_MAX_LENGTH - 10);
+    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[to_index(Axes::X)]), X_MAX_LENGTH / 2, Y_MAX_LENGTH - 10);
     enquecommand(buffer);
-    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[Z_AXIS]));
+    sprintf_P(buffer, PSTR("G1 F%i Z0"), int(homing_feedrate[to_index(Axes::Z)]));
     enquecommand(buffer);
 }
 
@@ -233,11 +233,11 @@ static void lcd_menu_first_run_bed_level_paper_center()
     if (lcd_lib_encoder_pos == ENCODER_NO_SELECTION)
         lcd_lib_encoder_pos = 0;
 
-    if (printing_state == PRINT_STATE_NORMAL && lcd_lib_encoder_pos != 0 && movesplanned() < 4)
+    if (printing_state == PRINT_STATE::NORMAL && lcd_lib_encoder_pos != 0 && movesplanned() < 4)
     {
-        current_position[Z_AXIS] -= float(lcd_lib_encoder_pos) * 0.05;
+        current_position[to_index(Axes::Z)] -= float(lcd_lib_encoder_pos) * 0.05;
         lcd_lib_encoder_pos = 0;
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 60, 0);
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], 60, 0);
     }
 
     if (movesplanned() > 0)
@@ -266,7 +266,7 @@ static void lcd_menu_first_run_bed_level_paper_left()
 
 static void homeBed()
 {
-    add_homeing[Z_AXIS] += LEVELING_OFFSET;  //Adjust the Z homing position to account for the thickness of the paper.
+    add_homeing[to_index(Axes::Z)] += LEVELING_OFFSET;  //Adjust the Z homing position to account for the thickness of the paper.
     // now that we are finished, save the settings to EEPROM
     Config_StoreSettings();
     enquecommand_P(PSTR("G28 Z0"));
@@ -340,18 +340,18 @@ static void lcd_menu_first_run_material_load_heatup()
 static void runMaterialForward()
 {
     //Override the max feedrate and acceleration values to get a better insert speed and speedup/slowdown
-    float old_max_feedrate_e = max_feedrate[E_AXIS];
+    float old_max_feedrate_e = max_feedrate[to_index(Axes::E)];
     float old_retract_acceleration = retract_acceleration;
-    max_feedrate[E_AXIS] = FILAMENT_INSERT_FAST_SPEED;
+    max_feedrate[to_index(Axes::E)] = FILAMENT_INSERT_FAST_SPEED;
     retract_acceleration = FILAMENT_LONG_MOVE_ACCELERATION;
 
-    current_position[E_AXIS] = 0;
-    plan_set_e_position(current_position[E_AXIS]);
-    current_position[E_AXIS] = FILAMENT_FORWARD_LENGTH;
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_FAST_SPEED, 0);
+    current_position[to_index(Axes::E)] = 0;
+    plan_set_e_position(current_position[to_index(Axes::E)]);
+    current_position[to_index(Axes::E)] = FILAMENT_FORWARD_LENGTH;
+    plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], FILAMENT_INSERT_FAST_SPEED, 0);
 
     //Put back origonal values.
-    max_feedrate[E_AXIS] = old_max_feedrate_e;
+    max_feedrate[to_index(Axes::E)] = old_max_feedrate_e;
     retract_acceleration = old_retract_acceleration;
 }
 
@@ -361,8 +361,8 @@ static void lcd_menu_first_run_material_load_insert()
 
     if (movesplanned() < 2)
     {
-        current_position[E_AXIS] += 0.5;
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_SPEED, 0);
+        current_position[to_index(Axes::E)] += 0.5;
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], FILAMENT_INSERT_SPEED, 0);
     }
 
     SELECT_MAIN_MENU_ITEM(0);
@@ -390,8 +390,8 @@ static void lcd_menu_first_run_material_load_forward()
         SELECT_MAIN_MENU_ITEM(0);
     }
 
-    long pos = st_get_position(E_AXIS);
-    long targetPos = lround(FILAMENT_FORWARD_LENGTH*axis_steps_per_unit[E_AXIS]);
+    long pos = st_get_position(Axes::E);
+    long targetPos = lround(FILAMENT_FORWARD_LENGTH*axis_steps_per_unit[to_index(Axes::E)]);
     uint8_t progress = (pos * 125 / targetPos);
     lcd_progressbar(progress);
 
@@ -410,8 +410,8 @@ static void lcd_menu_first_run_material_load_wait()
 
     if (movesplanned() < 2)
     {
-        current_position[E_AXIS] += 0.5;
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_EXTRUDE_SPEED, 0);
+        current_position[to_index(Axes::E)] += 0.5;
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], FILAMENT_INSERT_EXTRUDE_SPEED, 0);
     }
 
     lcd_lib_update_screen();

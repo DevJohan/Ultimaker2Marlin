@@ -73,7 +73,7 @@ static void abortPrint()
         primed = false;
     }
 
-    if (current_position[Z_AXIS] > Z_MAX_POS - 30)
+    if (current_position[to_index(Axes::Z)] > Z_MAX_POS - 30)
     {
         enquecommand_P(PSTR("G28 X0 Y0"));
         enquecommand_P(PSTR("G28 Z0"));
@@ -101,7 +101,7 @@ static void checkPrintFinished()
 static void doStartPrint()
 {
 	// zero the extruder position
-	current_position[E_AXIS] = 0.0;
+	current_position[to_index(Axes::E)] = 0.0;
 	plan_set_e_position(0);
 
 	// since we are going to prime the nozzle, forget about any G10/G11 retractions that happened at end of previous print
@@ -111,8 +111,8 @@ static void doStartPrint()
 	primed = true;
 
 	// move to priming height
-    current_position[Z_AXIS] = PRIMING_HEIGHT;
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS], 0);
+    current_position[to_index(Axes::Z)] = PRIMING_HEIGHT;
+    plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], homing_feedrate[to_index(Axes::Z)], 0);
 
     for(uint8_t e = 0; e<EXTRUDERS; e++)
     {
@@ -127,17 +127,17 @@ static void doStartPrint()
 
         // undo the end-of-print retraction
         plan_set_e_position((0.0 - END_OF_PRINT_RETRACTION) / volume_to_filament_length[e]);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, e);
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], END_OF_PRINT_RECOVERY_SPEED, e);
 
         // perform additional priming
         plan_set_e_position(-PRIMING_MM3);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
+        plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
 
         // for extruders other than the first one, perform end of print retraction
         if (e > 0)
         {
             plan_set_e_position((END_OF_PRINT_RETRACTION) / volume_to_filament_length[e]);
-            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], retract_feedrate/60, e);
+            plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], retract_feedrate/60, e);
         }
     }
     active_extruder = 0;
@@ -517,14 +517,14 @@ static void lcd_menu_print_printing()
             lcd_lib_draw_string_centerP(20, PSTR("Printing:"));
             lcd_lib_draw_string_center(30, card.longFilename);
             break;
-        case PRINT_STATE_HEATING:
+        case PRINT_STATE::HEATING:
             lcd_lib_draw_string_centerP(20, PSTR("Heating"));
             c = int_to_string(dsp_temperature[0], buffer, PSTR("C"));
             *c++ = '/';
             c = int_to_string(target_temperature[0], c, PSTR("C"));
             lcd_lib_draw_string_center(30, buffer);
             break;
-        case PRINT_STATE_HEATING_BED:
+        case PRINT_STATE::HEATING_BED:
             lcd_lib_draw_string_centerP(20, PSTR("Heating buildplate"));
             c = int_to_string(dsp_temperature_bed, buffer, PSTR("C"));
             *c++ = '/';
@@ -840,9 +840,9 @@ static void lcd_menu_print_tune()
                     {
                         lcd_lib_beep();
                         card.pause = true;
-                        if (current_position[Z_AXIS] < Z_MAX_POS - 60)
+                        if (current_position[to_index(Axes::Z)] < Z_MAX_POS - 60)
                             enquecommand_P(PSTR("M601 X10 Y20 Z20 L20"));
-                        else if (current_position[Z_AXIS] < Z_MAX_POS - 30)
+                        else if (current_position[to_index(Axes::Z)] < Z_MAX_POS - 30)
                             enquecommand_P(PSTR("M601 X10 Y20 Z2 L20"));
                         else
                             enquecommand_P(PSTR("M601 X10 Y20 Z0 L20"));
@@ -919,7 +919,7 @@ static void lcd_menu_print_tune_retraction()
         else if (IS_SELECTED_SCROLL(1))
             LCD_EDIT_SETTING_FLOAT001(retract_length, "Retract length", "mm", 0, 50);
         else if (IS_SELECTED_SCROLL(2))
-            LCD_EDIT_SETTING_SPEED(retract_feedrate, "Retract speed", "mm/sec", 0, max_feedrate[E_AXIS] * 60);
+            LCD_EDIT_SETTING_SPEED(retract_feedrate, "Retract speed", "mm/sec", 0, max_feedrate[to_index(Axes::E)] * 60);
 #if EXTRUDERS > 1
         else if (IS_SELECTED_SCROLL(3))
             LCD_EDIT_SETTING_FLOAT001(extruder_swap_retract_length, "Extruder change", "mm", 0, 50);

@@ -38,7 +38,7 @@ void lifetime_stats_init()
     hour_save_millis = startup_millis + MILLIS_HOUR;
     minute_counter_millis = startup_millis + MILLIS_MINUTE;
     is_printing = false;
-    last_e_pos = current_position[E_AXIS];
+    last_e_pos = current_position[to_index(Axes::E)];
 
     load_lifetime_stats();
 }
@@ -59,7 +59,7 @@ void lifetime_stats_tick()
             lifetime_print_minutes++;
             triptime_print_minutes++;
 
-            float diff = current_position[E_AXIS] - last_e_pos;
+            float diff = current_position[to_index(Axes::E)] - last_e_pos;
             if (diff > 0 && diff < 60 * 30)
             {
                 accumulated_e_diff += diff * volume_to_filament_length[active_extruder];
@@ -70,7 +70,7 @@ void lifetime_stats_tick()
                     accumulated_e_diff -= 10.0;
                 }
             }
-            last_e_pos = current_position[E_AXIS];
+            last_e_pos = current_position[to_index(Axes::E)];
         }
     }
 
@@ -85,7 +85,7 @@ void lifetime_stats_tick()
 void lifetime_stats_print_start()
 {
     is_printing = true;
-    last_e_pos = current_position[E_AXIS];
+    last_e_pos = current_position[to_index(Axes::E)];
     accumulated_e_diff = 0;
 }
 

@@ -236,10 +236,10 @@ void lcd_menu_maintenance_extrude()
 {
     if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
     {
-        if (printing_state == PRINT_STATE_NORMAL && movesplanned() < 3)
+        if (printing_state == PRINT_STATE::NORMAL && movesplanned() < 3)
         {
-            current_position[E_AXIS] += lcd_lib_encoder_pos * 0.1;
-            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 10, active_extruder);
+            current_position[to_index(Axes::E)] += lcd_lib_encoder_pos * 0.1;
+            plan_buffer_line(current_position[to_index(Axes::X)], current_position[to_index(Axes::Y)], current_position[to_index(Axes::Z)], current_position[to_index(Axes::E)], 10, active_extruder);
             lcd_lib_encoder_pos = 0;
         }
     }
@@ -391,7 +391,7 @@ static void lcd_menu_maintenance_retraction()
         else if (IS_SELECTED_SCROLL(1))
             LCD_EDIT_SETTING_FLOAT001(retract_length, "Retract length", "mm", 0, 50);
         else if (IS_SELECTED_SCROLL(2))
-            LCD_EDIT_SETTING_SPEED(retract_feedrate, "Retract speed", "mm/sec", 0, max_feedrate[E_AXIS] * 60);
+            LCD_EDIT_SETTING_SPEED(retract_feedrate, "Retract speed", "mm/sec", 0, max_feedrate[to_index(Axes::E)] * 60);
     }
 }
 
@@ -430,11 +430,11 @@ static void lcd_motion_details(uint8_t nr)
     else if(nr == 2)
         int_to_string(max_xy_jerk, buffer, PSTR("mm/sec"));
     else if(nr == 3)
-        int_to_string(max_feedrate[X_AXIS], buffer, PSTR("mm/sec"));
+        int_to_string(max_feedrate[to_index(Axes::X)], buffer, PSTR("mm/sec"));
     else if(nr == 4)
-        int_to_string(max_feedrate[Y_AXIS], buffer, PSTR("mm/sec"));
+        int_to_string(max_feedrate[to_index(Axes::Y)], buffer, PSTR("mm/sec"));
     else if(nr == 5)
-        int_to_string(max_feedrate[Z_AXIS], buffer, PSTR("mm/sec"));
+        int_to_string(max_feedrate[to_index(Axes::Z)], buffer, PSTR("mm/sec"));
     else if(nr == 6)
         int_to_string(motor_current_setting[0], buffer, PSTR("mA"));
     else if(nr == 7)
@@ -462,11 +462,11 @@ static void lcd_menu_maintenance_motion()
         else if (IS_SELECTED_SCROLL(2))
             LCD_EDIT_SETTING_FLOAT1(max_xy_jerk, "X/Y Jerk", "mm/sec", 0, 100);
         else if (IS_SELECTED_SCROLL(3))
-            LCD_EDIT_SETTING_FLOAT1(max_feedrate[X_AXIS], "Max speed X", "mm/sec", 0, 1000);
+            LCD_EDIT_SETTING_FLOAT1(max_feedrate[to_index(Axes::X)], "Max speed X", "mm/sec", 0, 1000);
         else if (IS_SELECTED_SCROLL(4))
-            LCD_EDIT_SETTING_FLOAT1(max_feedrate[Y_AXIS], "Max speed Y", "mm/sec", 0, 1000);
+            LCD_EDIT_SETTING_FLOAT1(max_feedrate[to_index(Axes::Y)], "Max speed Y", "mm/sec", 0, 1000);
         else if (IS_SELECTED_SCROLL(5))
-            LCD_EDIT_SETTING_FLOAT1(max_feedrate[Z_AXIS], "Max speed Z", "mm/sec", 0, 1000);
+            LCD_EDIT_SETTING_FLOAT1(max_feedrate[to_index(Axes::Z)], "Max speed Z", "mm/sec", 0, 1000);
         else if (IS_SELECTED_SCROLL(6))
             LCD_EDIT_SETTING(motor_current_setting[0], "Current X/Y", "mA", 0, 1300);
         else if (IS_SELECTED_SCROLL(7))

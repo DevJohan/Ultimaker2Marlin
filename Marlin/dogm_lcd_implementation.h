@@ -295,19 +295,19 @@ static void lcd_implementation_status_screen()
  u8g.drawPixel(8,33);
  u8g.drawPixel(8,35);
  u8g.setPrintPos(10,37);
- u8g.print(ftostr31ns(current_position[X_AXIS]));
+ u8g.print(ftostr31ns(current_position[to_index(Axes::X)]));
  u8g.setPrintPos(43,37);
  lcd_printPGM(PSTR("Y"));
  u8g.drawPixel(49,33);
  u8g.drawPixel(49,35);
  u8g.setPrintPos(51,37);
- u8g.print(ftostr31ns(current_position[Y_AXIS]));
+ u8g.print(ftostr31ns(current_position[to_index(Axes::Y)]));
  u8g.setPrintPos(83,37);
  u8g.print("Z");
  u8g.drawPixel(89,33);
  u8g.drawPixel(89,35);
  u8g.setPrintPos(91,37);
- u8g.print(ftostr31(current_position[Z_AXIS]));
+ u8g.print(ftostr31(current_position[to_index(Axes::Z)]));
  u8g.setColorIndex(1);	// black on white
 
  // Feedrate

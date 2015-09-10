@@ -33,7 +33,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
   float linear_travel = target[axis_linear] - position[axis_linear];
-  float extruder_travel = target[E_AXIS] - position[E_AXIS];
+  float extruder_travel = target[to_index(Axes::E)] - position[to_index(Axes::E)];
   float r_axis0 = -offset[axis_0];  // Radius vector from center to current location
   float r_axis1 = -offset[axis_1];
   float rt_axis0 = target[axis_0] - center_axis0;
@@ -99,7 +99,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   arc_target[axis_linear] = position[axis_linear];
 
   // Initialize the extruder axis
-  arc_target[E_AXIS] = position[E_AXIS];
+  arc_target[to_index(Axes::E)] = position[to_index(Axes::E)];
 
   for (i = 1; i<segments; i++) { // Increment (segments-1)
 
@@ -123,14 +123,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     arc_target[axis_0] = center_axis0 + r_axis0;
     arc_target[axis_1] = center_axis1 + r_axis1;
     arc_target[axis_linear] += linear_per_segment;
-    arc_target[E_AXIS] += extruder_per_segment;
+    arc_target[to_index(Axes::E)] += extruder_per_segment;
 
     clamp_to_software_endstops(arc_target);
-    plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], arc_target[E_AXIS], feed_rate, extruder);
+    plan_buffer_line(arc_target[to_index(Axes::X)], arc_target[to_index(Axes::Y)], arc_target[to_index(Axes::Z)], arc_target[to_index(Axes::E)], feed_rate, extruder);
 
   }
   // Ensure last segment arrives at target location.
-  plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feed_rate, extruder);
+  plan_buffer_line(target[to_index(Axes::X)], target[to_index(Axes::Y)], target[to_index(Axes::Z)], target[to_index(Axes::E)], feed_rate, extruder);
 
   //   plan_set_acceleration_manager_enabled(acceleration_manager_was_enabled);
 }

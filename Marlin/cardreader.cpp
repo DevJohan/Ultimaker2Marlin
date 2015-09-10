@@ -81,9 +81,9 @@ void  CardReader::lsDive(const char *prepend,SdFile parent)
       {
         if(lsAction==LS_SerialPrint)
         {
-          SERIAL_ECHO_START;
-          SERIAL_ECHOLN(MSG_SD_CANT_OPEN_SUBDIR);
-          SERIAL_ECHOLN(lfilename);
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_ECHO_START;
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_ECHOLN(MSG_SD_CANT_OPEN_SUBDIR);
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_ECHOLN(lfilename);
         }
       }
       lsDive(path,dir);
@@ -116,8 +116,8 @@ void  CardReader::lsDive(const char *prepend,SdFile parent)
       createFilename(filename,p);
       if(lsAction==LS_SerialPrint)
       {
-        SERIAL_PROTOCOL(prepend);
-        SERIAL_PROTOCOLLN(filename);
+    	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES        SERIAL_PROTOCOL(prepend);
+    	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES        SERIAL_PROTOCOLLN(filename);
       }
       else if(lsAction==LS_Count)
       {
@@ -157,24 +157,24 @@ void CardReader::initsd()
 #endif
   {
     //if (!card.init(SPI_HALF_SPEED,SDSS))
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ECHO_START;
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
   }
   else if (!volume.init(&card))
   {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLNPGM(MSG_SD_VOL_INIT_FAIL);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERROR_START;
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERRORLNPGM(MSG_SD_VOL_INIT_FAIL);
   }
   else if (!root.openRoot(&volume))
   {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLNPGM(MSG_SD_OPENROOT_FAIL);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERROR_START;
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERRORLNPGM(MSG_SD_OPENROOT_FAIL);
   }
   else
   {
     cardOK = true;
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM(MSG_SD_CARD_OK);
+    //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ECHO_START;
+    //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ECHOLNPGM(MSG_SD_CARD_OK);
   }
   workDir=root;
   curDir=&root;
@@ -255,12 +255,12 @@ void CardReader::openFile(const char* name,bool read)
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);
         subdirname[dirname_end-dirname_start]=0;
-        SERIAL_ECHOLN(subdirname);
+        //TODO:FIX_SD_CARD_SERIAL_MESSAGES        SERIAL_ECHOLN(subdirname);
         if(!myDir.open(curDir,subdirname,O_READ))
         {
-          SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
-          SERIAL_PROTOCOL(subdirname);
-          SERIAL_PROTOCOLLNPGM(".");
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOL(subdirname);
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOLLNPGM(".");
           return;
         }
         else
@@ -290,35 +290,35 @@ void CardReader::openFile(const char* name,bool read)
     if (file.open(curDir, fname, O_READ))
     {
       filesize = file.fileSize();
-      SERIAL_PROTOCOLPGM(MSG_SD_FILE_OPENED);
-      SERIAL_PROTOCOL(fname);
-      SERIAL_PROTOCOLPGM(MSG_SD_SIZE);
-      SERIAL_PROTOCOLLN(filesize);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM(MSG_SD_FILE_OPENED);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOL(fname);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM(MSG_SD_SIZE);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLN(filesize);
       sdpos = 0;
 
-      SERIAL_PROTOCOLLNPGM(MSG_SD_FILE_SELECTED);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLNPGM(MSG_SD_FILE_SELECTED);
       lcd_setstatus(fname);
     }
     else
     {
-      SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
-      SERIAL_PROTOCOL(fname);
-      SERIAL_PROTOCOLLNPGM(".");
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOL(fname);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLNPGM(".");
     }
   }
   else
   { //write
     if (!file.open(curDir, fname, O_CREAT | O_APPEND | O_WRITE | O_TRUNC))
     {
-      SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
-      SERIAL_PROTOCOL(fname);
-      SERIAL_PROTOCOLLNPGM(".");
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOL(fname);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLNPGM(".");
     }
     else
     {
       saving = true;
-      SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
-      SERIAL_PROTOCOLLN(name);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
+      //TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLN(name);
       lcd_setstatus(fname);
     }
   }
@@ -352,12 +352,12 @@ void CardReader::removeFile(const char* name)
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);
         subdirname[dirname_end-dirname_start]=0;
-        SERIAL_ECHOLN(subdirname);
+        //TODO:FIX_SD_CARD_SERIAL_MESSAGES        SERIAL_ECHOLN(subdirname);
         if(!myDir.open(curDir,subdirname,O_READ))
         {
-          SERIAL_PROTOCOLPGM("open failed, File: ");
-          SERIAL_PROTOCOL(subdirname);
-          SERIAL_PROTOCOLLNPGM(".");
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOLPGM("open failed, File: ");
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOL(subdirname);
+        	//TODO:FIX_SD_CARD_SERIAL_MESSAGES          SERIAL_PROTOCOLLNPGM(".");
           return;
         }
         else
@@ -384,15 +384,15 @@ void CardReader::removeFile(const char* name)
   }
     if (file.remove(curDir, fname))
     {
-      SERIAL_PROTOCOLPGM("File deleted:");
-      SERIAL_PROTOCOL(fname);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM("File deleted:");
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOL(fname);
       sdpos = 0;
     }
     else
     {
-      SERIAL_PROTOCOLPGM("Deletion failed, File: ");
-      SERIAL_PROTOCOL(fname);
-      SERIAL_PROTOCOLLNPGM(".");
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLPGM("Deletion failed, File: ");
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOL(fname);
+    	//TODO:FIX_SD_CARD_SERIAL_MESSAGES      SERIAL_PROTOCOLLNPGM(".");
     }
 
 }
@@ -400,18 +400,18 @@ void CardReader::removeFile(const char* name)
 void CardReader::getStatus()
 {
   if(cardOK){
-    SERIAL_PROTOCOLPGM(MSG_SD_PRINTING_BYTE);
-    SERIAL_PROTOCOL(sdpos);
-    SERIAL_PROTOCOLPGM("/");
-    SERIAL_PROTOCOLLN(filesize);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLPGM(MSG_SD_PRINTING_BYTE);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOL(sdpos);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLPGM("/");
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLLN(filesize);
   }
   else{
-    SERIAL_PROTOCOLLNPGM(MSG_SD_NOT_PRINTING);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLLNPGM(MSG_SD_NOT_PRINTING);
   }
   if (card.errorCode())
   {
-    SERIAL_PROTOCOLPGM("Card error:");
-    SERIAL_PROTOCOLLN(card.errorCode());
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLPGM("Card error:");
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_PROTOCOLLN(card.errorCode());
   }
 }
 void CardReader::write_command(char *buf)
@@ -432,8 +432,8 @@ void CardReader::write_command(char *buf)
   file.write(begin);
   if (file.writeError)
   {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLNPGM(MSG_SD_ERR_WRITE_TO_FILE);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERROR_START;
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES    SERIAL_ERRORLNPGM(MSG_SD_ERR_WRITE_TO_FILE);
   }
 }
 
@@ -534,9 +534,9 @@ void CardReader::chdir(const char * relpath)
 
   if(!newfile.open(*parent,relpath, O_READ))
   {
-   SERIAL_ECHO_START;
-   SERIAL_ECHOPGM(MSG_SD_CANT_ENTER_SUBDIR);
-   SERIAL_ECHOLN(relpath);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES   SERIAL_ECHO_START;
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES   SERIAL_ECHOPGM(MSG_SD_CANT_ENTER_SUBDIR);
+	  //TODO:FIX_SD_CARD_SERIAL_MESSAGES   SERIAL_ECHOLN(relpath);
   }
   else
   {

@@ -199,15 +199,15 @@ void checkHitEndstops()
    SERIAL_ECHO_START;
    SERIAL_ECHOPGM(MSG_ENDSTOPS_HIT);
    if(endstop_x_hit) {
-     SERIAL_ECHOPAIR(" X:",(float)endstops_trigsteps[X_AXIS]/axis_steps_per_unit[X_AXIS]);
+     SERIAL_ECHOPAIR(" X:",(float)endstops_trigsteps[to_index(Axes::X)]/axis_steps_per_unit[to_index(Axes::X)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "X");
    }
    if(endstop_y_hit) {
-     SERIAL_ECHOPAIR(" Y:",(float)endstops_trigsteps[Y_AXIS]/axis_steps_per_unit[Y_AXIS]);
+     SERIAL_ECHOPAIR(" Y:",(float)endstops_trigsteps[to_index(Axes::Y)]/axis_steps_per_unit[to_index(Axes::Y)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Y");
    }
    if(endstop_z_hit) {
-     SERIAL_ECHOPAIR(" Z:",(float)endstops_trigsteps[Z_AXIS]/axis_steps_per_unit[Z_AXIS]);
+     SERIAL_ECHOPAIR(" Z:",(float)endstops_trigsteps[to_index(Axes::Z)]/axis_steps_per_unit[to_index(Axes::Z)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
    }
    SERIAL_ECHOLN("");
@@ -378,35 +378,35 @@ ISR(TIMER1_COMPA_vect)
 
 
     // Set the direction bits (X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY)
-    if((out_bits & (1<<X_AXIS))!=0){
+    if((out_bits & (axis_mask(Axes::X)))!=0){
       WRITE(X_DIR_PIN, INVERT_X_DIR);
-      count_direction[X_AXIS]=-1;
+      count_direction[to_index(Axes::X)]=-1;
     }
     else{
       WRITE(X_DIR_PIN, !INVERT_X_DIR);
-      count_direction[X_AXIS]=1;
+      count_direction[to_index(Axes::X)]=1;
     }
-    if((out_bits & (1<<Y_AXIS))!=0){
+    if((out_bits & (axis_mask(Axes::Y)))!=0){
       WRITE(Y_DIR_PIN, INVERT_Y_DIR);
-      count_direction[Y_AXIS]=-1;
+      count_direction[to_index(Axes::Y)]=-1;
     }
     else{
       WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
-      count_direction[Y_AXIS]=1;
+      count_direction[to_index(Axes::Y)]=1;
     }
 
     // Set direction en check limit switches
     #ifndef COREXY
-    if ((out_bits & (1<<X_AXIS)) != 0) {   // stepping along -X axis
+    if ((out_bits & (axis_mask(Axes::X))) != 0) {   // stepping along -X axis
     #else
-    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) != 0)) {   //-X occurs for -A and -B
+    if ((((out_bits & (axis_mask(Axes::X))) != 0)&&(out_bits & (axis_mask(Axes::Y))) != 0)) {   //-X occurs for -A and -B
     #endif
       CHECK_ENDSTOPS
       {
         #if defined(X_MIN_PIN) && X_MIN_PIN > -1
           bool x_min_endstop=(READ(X_MIN_PIN) != X_ENDSTOPS_INVERTING);
           if(x_min_endstop && old_x_min_endstop && (current_block->steps_x > 0)) {
-            endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
+            endstops_trigsteps[to_index(Axes::X)] = count_position[to_index(Axes::X)];
             endstop_x_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -420,7 +420,7 @@ ISR(TIMER1_COMPA_vect)
         #if defined(X_MAX_PIN) && X_MAX_PIN > -1
           bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOPS_INVERTING);
           if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
-            endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
+            endstops_trigsteps[to_index(Axes::X)] = count_position[to_index(Axes::X)];
             endstop_x_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -430,16 +430,16 @@ ISR(TIMER1_COMPA_vect)
     }
 
     #ifndef COREXY
-    if ((out_bits & (1<<Y_AXIS)) != 0) {   // -direction
+    if ((out_bits & (axis_mask(Axes::Y))) != 0) {   // -direction
     #else
-    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) == 0)) {   // -Y occurs for -A and +B
+    if ((((out_bits & (axis_mask(Axes::X))) != 0)&&(out_bits & (axis_mask(Axes::Y))) == 0)) {   // -Y occurs for -A and +B
     #endif
       CHECK_ENDSTOPS
       {
         #if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
           bool y_min_endstop=(READ(Y_MIN_PIN) != Y_ENDSTOPS_INVERTING);
           if(y_min_endstop && old_y_min_endstop && (current_block->steps_y > 0)) {
-            endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
+            endstops_trigsteps[to_index(Axes::Y)] = count_position[to_index(Axes::Y)];
             endstop_y_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -453,7 +453,7 @@ ISR(TIMER1_COMPA_vect)
         #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
           bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOPS_INVERTING);
           if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0)){
-            endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
+            endstops_trigsteps[to_index(Axes::Y)] = count_position[to_index(Axes::Y)];
             endstop_y_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -462,20 +462,20 @@ ISR(TIMER1_COMPA_vect)
       }
     }
 
-    if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
+    if ((out_bits & (axis_mask(Axes::Z))) != 0) {   // -direction
       WRITE(Z_DIR_PIN,INVERT_Z_DIR);
 
 	  #ifdef Z_DUAL_STEPPER_DRIVERS
         WRITE(Z2_DIR_PIN,INVERT_Z_DIR);
       #endif
 
-      count_direction[Z_AXIS]=-1;
+      count_direction[to_index(Axes::Z)]=-1;
       CHECK_ENDSTOPS
       {
         #if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
           bool z_min_endstop=(READ(Z_MIN_PIN) != Z_ENDSTOPS_INVERTING);
           if(z_min_endstop && old_z_min_endstop && (current_block->steps_z > 0)) {
-            endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
+            endstops_trigsteps[to_index(Axes::Z)] = count_position[to_index(Axes::Z)];
             endstop_z_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -490,13 +490,13 @@ ISR(TIMER1_COMPA_vect)
         WRITE(Z2_DIR_PIN,!INVERT_Z_DIR);
       #endif
 
-      count_direction[Z_AXIS]=1;
+      count_direction[to_index(Axes::Z)]=1;
       CHECK_ENDSTOPS
       {
         #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
           bool z_max_endstop=(READ(Z_MAX_PIN) != Z_ENDSTOPS_INVERTING);
           if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0)) {
-            endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
+            endstops_trigsteps[to_index(Axes::Z)] = count_position[to_index(Axes::Z)];
             endstop_z_hit=true;
             step_events_completed = current_block->step_event_count;
           }
@@ -506,13 +506,13 @@ ISR(TIMER1_COMPA_vect)
     }
 
     #ifndef ADVANCE
-      if ((out_bits & (1<<E_AXIS)) != 0) {  // -direction
+      if ((out_bits & (axis_mask(Axes::E))) != 0) {  // -direction
         REV_E_DIR();
-        count_direction[E_AXIS]=-1;
+        count_direction[to_index(Axes::E)]=-1;
       }
       else { // +direction
         NORM_E_DIR();
-        count_direction[E_AXIS]=1;
+        count_direction[to_index(Axes::E)]=1;
       }
     #endif //!ADVANCE
 
@@ -528,7 +528,7 @@ ISR(TIMER1_COMPA_vect)
       counter_e += current_block->steps_e;
       if (counter_e > 0) {
         counter_e -= current_block->step_event_count;
-        if ((out_bits & (1<<E_AXIS)) != 0) { // - direction
+        if ((out_bits & (axis_mask(Axes::E))) != 0) { // - direction
           e_steps[current_block->active_extruder]--;
         }
         else {
@@ -541,7 +541,7 @@ ISR(TIMER1_COMPA_vect)
         if (counter_x > 0) {
           WRITE(X_STEP_PIN, !INVERT_X_STEP_PIN);
           counter_x -= current_block->step_event_count;
-          count_position[X_AXIS]+=count_direction[X_AXIS];
+          count_position[to_index(Axes::X)]+=count_direction[to_index(Axes::X)];
           WRITE(X_STEP_PIN, INVERT_X_STEP_PIN);
         }
 
@@ -549,7 +549,7 @@ ISR(TIMER1_COMPA_vect)
         if (counter_y > 0) {
           WRITE(Y_STEP_PIN, !INVERT_Y_STEP_PIN);
           counter_y -= current_block->step_event_count;
-          count_position[Y_AXIS]+=count_direction[Y_AXIS];
+          count_position[to_index(Axes::Y)]+=count_direction[to_index(Axes::Y)];
           WRITE(Y_STEP_PIN, INVERT_Y_STEP_PIN);
         }
 
@@ -562,7 +562,7 @@ ISR(TIMER1_COMPA_vect)
         #endif
 
         counter_z -= current_block->step_event_count;
-        count_position[Z_AXIS]+=count_direction[Z_AXIS];
+        count_position[to_index(Axes::Z)]+=count_direction[to_index(Axes::Z)];
         WRITE(Z_STEP_PIN, INVERT_Z_STEP_PIN);
 
 		#ifdef Z_DUAL_STEPPER_DRIVERS
@@ -575,7 +575,7 @@ ISR(TIMER1_COMPA_vect)
         if (counter_e > 0) {
           WRITE_E_STEP(!INVERT_E_STEP_PIN);
           counter_e -= current_block->step_event_count;
-          count_position[E_AXIS]+=count_direction[E_AXIS];
+          count_position[to_index(Axes::E)]+=count_direction[to_index(Axes::E)];
           WRITE_E_STEP(INVERT_E_STEP_PIN);
         }
       #endif //!ADVANCE
@@ -901,25 +901,25 @@ void st_synchronize()
 void st_set_position(const long &x, const long &y, const long &z, const long &e)
 {
   CRITICAL_SECTION_START;
-  count_position[X_AXIS] = x;
-  count_position[Y_AXIS] = y;
-  count_position[Z_AXIS] = z;
-  count_position[E_AXIS] = e;
+  count_position[to_index(Axes::X)] = x;
+  count_position[to_index(Axes::Y)] = y;
+  count_position[to_index(Axes::Z)] = z;
+  count_position[to_index(Axes::E)] = e;
   CRITICAL_SECTION_END;
 }
 
 void st_set_e_position(const long &e)
 {
   CRITICAL_SECTION_START;
-  count_position[E_AXIS] = e;
+  count_position[to_index(Axes::E)] = e;
   CRITICAL_SECTION_END;
 }
 
-long st_get_position(uint8_t axis)
+long st_get_position(Axes axis)
 {
   long count_pos;
   CRITICAL_SECTION_START;
-  count_pos = count_position[axis];
+  count_pos = count_position[to_index(axis)];
   CRITICAL_SECTION_END;
   return count_pos;
 }

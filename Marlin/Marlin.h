@@ -4,6 +4,8 @@
 #ifndef MARLIN_H
 #define MARLIN_H
 
+#define VERSION_STRING  "1.0.0"
+
 #define  FORCE_INLINE __attribute__((always_inline)) inline
 
 #include <math.h>
@@ -51,54 +53,13 @@ private:
 	unsigned char _sreg;
 };
 
-#include "MarlinSerial.h"
+#include "../CommunicationsBridge/printer_to_remote.h"
 
 #include "WString.h"
 
-#ifdef AT90USB
-  #define MYSERIAL Serial
-#else
-  #define MYSERIAL MSerial
-#endif
-
-#define SERIAL_PROTOCOL(x) MYSERIAL.print(x);
-#define SERIAL_PROTOCOL_F(x,y) MYSERIAL.print(x,y);
-#define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
-#define SERIAL_PROTOCOLLN(x) do {MYSERIAL.print(x);MYSERIAL.write('\n');} while(0)
-#define SERIAL_PROTOCOLLNPGM(x) do{serialprintPGM(PSTR(x));MYSERIAL.write('\n');} while(0)
 
 
-const char errormagic[] PROGMEM ="Error:";
-const char echomagic[] PROGMEM ="echo:";
-#define SERIAL_ERROR_START serialprintPGM(errormagic);
-#define SERIAL_ERROR(x) SERIAL_PROTOCOL(x)
-#define SERIAL_ERRORPGM(x) SERIAL_PROTOCOLPGM(x)
-#define SERIAL_ERRORLN(x) SERIAL_PROTOCOLLN(x)
-#define SERIAL_ERRORLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
 
-#define SERIAL_ECHO_START serialprintPGM(echomagic);
-#define SERIAL_ECHO(x) SERIAL_PROTOCOL(x)
-#define SERIAL_ECHOPGM(x) SERIAL_PROTOCOLPGM(x)
-#define SERIAL_ECHOLN(x) SERIAL_PROTOCOLLN(x)
-#define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
-
-#define SERIAL_ECHOPAIR(name,value) (serial_echopair_P(PSTR(name),(value)))
-
-void serial_echopair_P(const char *s_P, float v);
-void serial_echopair_P(const char *s_P, double v);
-void serial_echopair_P(const char *s_P, unsigned long v);
-
-
-//things to write to serial from Programmemory. saves 400 to 2k of RAM.
-FORCE_INLINE void serialprintPGM(const char *str)
-{
-  char ch=pgm_read_byte(str);
-  while(ch)
-  {
-    MYSERIAL.write(ch);
-    ch=pgm_read_byte(++str);
-  }
-}
 
 
 void get_command();
@@ -160,8 +121,18 @@ void manage_inactivity();
 #endif
 
 
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
+enum class Axes: uint8_t { X, Y, Z, E};
 
+constexpr uint8_t to_index(Axes axis){
+	return static_cast<uint8_t>(axis);
+}
+constexpr uint8_t axis_mask(Axes axis){
+	return (1<<to_index(axis));
+}
+static_assert(to_index(Axes::X) == 0u, "Axes::X value not as expected");
+static_assert(to_index(Axes::Y) == 1u, "Axes::Y value not as expected");
+static_assert(to_index(Axes::Z) == 2u, "Axes::Z value not as expected");
+static_assert(to_index(Axes::E) == 3u, "Axes::E value not as expected");
 
 void FlushSerialRequestResend();
 void ClearToSend();
@@ -236,13 +207,16 @@ extern unsigned long starttime;
 extern unsigned long stoptime;
 
 //The printing state from the main command processor. Is not zero when the command processor is in a loop waiting for a result.
-extern uint8_t printing_state;
-#define PRINT_STATE_NORMAL      0
-#define PRINT_STATE_DWELL       1
-#define PRINT_STATE_WAIT_USER   2
-#define PRINT_STATE_HEATING     3
-#define PRINT_STATE_HEATING_BED 4
-#define PRINT_STATE_HOMING      5
+enum class PRINT_STATE: uint8_t {
+NORMAL      = 0,
+DWELL       = 1,
+WAIT_USER   = 2,
+HEATING     = 3,
+HEATING_BED = 4,
+HOMING      = 5
+};
+
+extern PRINT_STATE printing_state;
 
 // Handling multiple extruders pins
 extern uint8_t active_extruder;

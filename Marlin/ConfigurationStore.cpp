@@ -41,6 +41,9 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
 #define EEPROM_VERSION "V11"
 
 #ifdef EEPROM_SETTINGS
+
+
+
 void Config_StoreSettings()
 {
   char ver[4]= "000";
@@ -93,80 +96,42 @@ void Config_StoreSettings()
   char ver2[4]=EEPROM_VERSION;
   i=EEPROM_OFFSET;
   EEPROM_WRITE_VAR(i,ver2); // validate data
-  SERIAL_ECHO_START;
-  SERIAL_ECHOLNPGM("Settings Stored");
+	report_settings_stored();
 }
 #endif //EEPROM_SETTINGS
 
 
 #ifdef EEPROM_CHITCHAT
+
+
 void Config_PrintSettings()
 {  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Steps per unit:");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M92 X",axis_steps_per_unit[0]);
-    SERIAL_ECHOPAIR(" Y",axis_steps_per_unit[1]);
-    SERIAL_ECHOPAIR(" Z",axis_steps_per_unit[2]);
-    SERIAL_ECHOPAIR(" E",axis_steps_per_unit[3]);
-    SERIAL_ECHOLN("");
-
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Maximum feedrates (mm/s):");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M203 X",max_feedrate[0]);
-    SERIAL_ECHOPAIR(" Y",max_feedrate[1] );
-    SERIAL_ECHOPAIR(" Z", max_feedrate[2] );
-    SERIAL_ECHOPAIR(" E", max_feedrate[3]);
-    SERIAL_ECHOLN("");
-
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Maximum Acceleration (mm/s2):");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M201 X" ,max_acceleration_units_per_sq_second[0] );
-    SERIAL_ECHOPAIR(" Y" , max_acceleration_units_per_sq_second[1] );
-    SERIAL_ECHOPAIR(" Z" ,max_acceleration_units_per_sq_second[2] );
-    SERIAL_ECHOPAIR(" E" ,max_acceleration_units_per_sq_second[3]);
-    SERIAL_ECHOLN("");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Acceleration: S=acceleration, T=retract acceleration");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M204 S",acceleration );
-    SERIAL_ECHOPAIR(" T" ,retract_acceleration);
-    SERIAL_ECHOLN("");
-
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Advanced variables: S=Min feedrate (mm/s), T=Min travel feedrate (mm/s), B=minimum segment time (ms), X=maximum XY jerk (mm/s),  Z=maximum Z jerk (mm/s),  E=maximum E jerk (mm/s)");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M205 S",minimumfeedrate );
-    SERIAL_ECHOPAIR(" T" ,mintravelfeedrate );
-    SERIAL_ECHOPAIR(" B" ,minsegmenttime );
-    SERIAL_ECHOPAIR(" X" ,max_xy_jerk );
-    SERIAL_ECHOPAIR(" Z" ,max_z_jerk);
-    SERIAL_ECHOPAIR(" E" ,max_e_jerk);
-    SERIAL_ECHOLN("");
-
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("Home offset (mm):");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("  M206 X",add_homeing[0] );
-    SERIAL_ECHOPAIR(" Y" ,add_homeing[1] );
-    SERIAL_ECHOPAIR(" Z" ,add_homeing[2] );
-    SERIAL_ECHOLN("");
+	report_current_printer_settings(
+			axis_steps_per_unit,
+			max_feedrate,
+			max_acceleration_units_per_sq_second,
+			acceleration,
+			retract_acceleration,
+			minimumfeedrate,
+			mintravelfeedrate,
+			minsegmenttime,
+			max_xy_jerk,
+			max_z_jerk,
+			max_e_jerk,
+			add_homeing,
+			Kp,
+			unscalePID_i(Ki),
+			unscalePID_d(Kd)
+	);
 #ifdef PIDTEMP
-    SERIAL_ECHO_START;
-    SERIAL_ECHOLNPGM("PID settings:");
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPAIR("   M301 P",Kp);
-    SERIAL_ECHOPAIR(" I" ,unscalePID_i(Ki));
-    SERIAL_ECHOPAIR(" D" ,unscalePID_d(Kd));
-    SERIAL_ECHOLN("");
 #endif
 }
 #endif
 
 
 #ifdef EEPROM_SETTINGS
+
+
 void Config_RetrieveSettings()
 {
     int i=EEPROM_OFFSET;
@@ -224,9 +189,8 @@ void Config_RetrieveSettings()
 
 		// Call updatePID (similar to when we have processed M301)
 		updatePID();
-        SERIAL_ECHO_START;
-        SERIAL_ECHOLNPGM("Stored settings retrieved");
-    }
+		report_settings_retrieved();
+	}
     else
     {
         Config_ResetDefault();
@@ -239,6 +203,7 @@ void Config_RetrieveSettings()
     Config_PrintSettings();
 }
 #endif
+
 
 void Config_ResetDefault()
 {
@@ -296,7 +261,5 @@ void Config_ResetDefault()
     retract_length = 4.5;
     retract_feedrate = 25 * 60;
 
-SERIAL_ECHO_START;
-SERIAL_ECHOLNPGM("Hardcoded Default Settings Loaded");
-
+	report_factory_settings_restored();
 }
