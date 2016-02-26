@@ -473,14 +473,7 @@ void setup()
 void loop()
 {
   if(fiset_data_ready()){
-	  MYSERIAL.print("Fiset no ");
-	  MYSERIAL.print( get_fiset_data_count(), DEC );
-	  MYSERIAL.print(": ");
-	  MYSERIAL.print( get_fiset_gain(), DEC );
-	  MYSERIAL.print(" ");
-	  MYSERIAL.print( get_fiset_magnitude(), DEC );
-	  MYSERIAL.print(" ");
-	  MYSERIAL.println( get_fiset_data(), DEC );
+	  report_fiset_full_data( get_fiset_data_count(), get_fiset_gain(), get_fiset_magnitude(), get_fiset_data() );
   }
 
   if(buflen < (BUFSIZE-1))
@@ -682,11 +675,11 @@ void get_command()
 				stoptime=millis();
 				char time[30];
 				unsigned long t=(stoptime-starttime)/1000;
+				report_file_printed(t);
 				int hours, minutes;
 				minutes=(t/60)%60;
 				hours=t/60/60;
 				sprintf_P(time, PSTR("%i hours %i minutes"),hours, minutes);
-				report_file_printed(time);
 				lcd_setstatus(time);
 				card.printingHasFinished();
 				card.checkautostart(true);
@@ -761,12 +754,6 @@ static void axis_is_at_home(Axes axis) {
   max_pos[to_index(axis)] =          base_max_pos(axis);// + add_homeing[axis];
 }
 
-void report_error_endstop_still_pressed() {
-	SERIAL_ERROR_START
-	;
-	SERIAL_ERRORLNPGM(
-			"Endstop still pressed after backing off. Endstop stuck?");
-}
 
 static void homeaxis( Axes axis ) {
 #define HOMEAXIS_DO(LETTER) \
@@ -988,11 +975,6 @@ float probeWithCapacitiveSensor()
 }
 #endif//ENABLE_BED_LEVELING_PROBE
 
-void report_time_elapsed(char time[30]) {
-	SERIAL_ECHO_START
-	;
-	SERIAL_ECHOLN(time);
-}
 
 void process_commands()
 {
@@ -1466,19 +1448,19 @@ void process_commands()
 #endif //SDSUPPORT
 
     case 31: //M31 take time since the start of the SD print or an M109 command
-      {
-      stoptime=millis();
-      char time[30];
-      unsigned long t=(stoptime-starttime)/1000;
-      int sec,min;
-      min=t/60;
-      sec=t%60;
-      sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
-			report_time_elapsed(time);
-			lcd_setstatus(time);
-      autotempShutdown();
-      }
-      break;
+    {
+    	stoptime=millis();
+    	char time[30];
+    	unsigned long t=(stoptime-starttime)/1000;
+    	report_time_elapsed(t);
+    	int sec,min;
+    	min=t/60;
+    	sec=t%60;
+    	sprintf_P(time, PSTR("%i min, %i sec"), min, sec);
+    	lcd_setstatus(time);
+    	autotempShutdown();
+    }
+    break;
     case 42: //M42 -Change pin status via gcode
       if (code_seen('S'))
       {
@@ -1517,34 +1499,35 @@ void process_commands()
       if (code_seen('S')) setTargetBed(code_value());
       break;
     case 105 : // M105
-      if(setTargetedHotend(105)){
-        break;
-        }
-      #if defined(TEMP_0_PIN) && TEMP_0_PIN > -1
-        SERIAL_PROTOCOLPGM("ok T:");
-        SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
-        SERIAL_PROTOCOLPGM(" /");
-        SERIAL_PROTOCOL_F(degTargetHotend(tmp_extruder),1);
-        #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
-          SERIAL_PROTOCOLPGM(" B:");
-          SERIAL_PROTOCOL_F(degBed(),1);
-          SERIAL_PROTOCOLPGM(" /");
-          SERIAL_PROTOCOL_F(degTargetBed(),1);
-        #endif //TEMP_BED_PIN
-      #else
-        SERIAL_ERROR_START;
-        SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
-      #endif
-
-        SERIAL_PROTOCOLPGM(" @:");
-        SERIAL_PROTOCOL(getHeaterPower(tmp_extruder));
-
-        SERIAL_PROTOCOLPGM(" B@:");
-        SERIAL_PROTOCOL(getHeaterPower(-1));
-
-        SERIAL_PROTOCOLLN("");
-      return;
-      break;
+    	if(setTargetedHotend(105)){
+    		break;
+    	}
+    	{
+#if defined(TEMP_0_PIN) && TEMP_0_PIN > -1
+    	const float deg_hotend = degHotend(tmp_extruder);
+    	const float target_hotend = degTargetHotend(tmp_extruder);
+#else
+    	const float deg_hotend = 0;
+    	const float target_hotend = 0;
+#endif // TEMP_0_PIN
+#if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
+    	const float deg_bed = degBed();
+    	const float target_bed = degTargetBed();
+#else
+    	const float deg_bed = 0;
+    	const float target_bed = 0;
+#endif // TEMP_BED_PIN
+    	report_temperature_and_power(
+    			tmp_extruder,
+				deg_hotend,
+				target_hotend,
+				deg_bed,
+				target_bed,
+				getHeaterPower(tmp_extruder),
+				getHeaterPower(-1));
+    	}
+    	return;
+    	break;
     case 109:
     {// M109 - Wait for extruder heater to reach target.
       if(setTargetedHotend(109)){
@@ -1584,25 +1567,15 @@ void process_commands()
       #endif //TEMP_RESIDENCY_TIME
           if( (millis() - codenum) > 1000UL )
           { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)tmp_extruder);
-            #ifdef TEMP_RESIDENCY_TIME
-              SERIAL_PROTOCOLPGM(" W:");
-              if(residencyStart > -1)
-              {
-                 codenum = ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL;
-                 SERIAL_PROTOCOLLN( codenum );
-              }
-              else
-              {
-                 SERIAL_PROTOCOLLN( "?" );
-              }
-            #else
-              SERIAL_PROTOCOLLN("");
-            #endif
-            codenum = millis();
+#ifdef TEMP_RESIDENCY_TIME
+        	  const char residency_char = residencyStart > -1 ? 'W': '?';
+        	  const int16_t residency_time = residency_char == 'W' ? ((TEMP_RESIDENCY_TIME * 1000UL) - (millis() - residencyStart)) / 1000UL : 0;
+#else
+        	  const char residency_char = 0;
+        	  const int16_t residency_time = 0;
+#endif
+        	  report_wait_for_temperature( tmp_extruder, degHotend(tmp_extruder), residency_char, residency_time );
+        	  codenum = millis();
           }
           manage_heater();
           manage_inactivity();
@@ -1634,14 +1607,7 @@ void process_commands()
         {
           if(( millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
-            float tt=degHotend(active_extruder);
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL(tt);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)active_extruder);
-            SERIAL_PROTOCOLPGM(" B:");
-            SERIAL_PROTOCOL_F(degBed(),1);
-            SERIAL_PROTOCOLLN("");
+            report_wait_for_temperature_bed(active_extruder, degHotend(active_extruder), degBed() );
             codenum = millis();
           }
           manage_heater();
@@ -1651,7 +1617,7 @@ void process_commands()
         }
         LCD_MESSAGEPGM(MSG_BED_DONE);
         previous_millis_cmd = millis();
-    #endif
+    #endif // defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
         break;
 
     #if defined(FAN_PIN) && FAN_PIN > -1
@@ -2550,13 +2516,8 @@ void process_commands()
         break;
     case 10010://M10010 - Request LCD screen button info (R:[rotation difference compared to previous request] B:[button down])
         {
-            SERIAL_PROTOCOLPGM("ok R:");
-            SERIAL_PROTOCOL_F(lcd_lib_encoder_pos, 10);
-            lcd_lib_encoder_pos = 0;
-            if (lcd_lib_button_down)
-                SERIAL_PROTOCOLLNPGM(" B:1");
-            else
-                SERIAL_PROTOCOLLNPGM(" B:0");
+			report_lcd_button_info(lcd_lib_encoder_pos, lcd_lib_button_down);
+			lcd_lib_encoder_pos = 0;
             return;
         }
         break;
@@ -2568,11 +2529,8 @@ void process_commands()
   {
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
-      SERIAL_ECHO_START;
-      SERIAL_ECHO("T");
-      SERIAL_ECHO(tmp_extruder);
-      SERIAL_ECHOLN(MSG_INVALID_EXTRUDER);
-    }
+    	report_invalid_extruder_specified(tmp_extruder);
+		}
     else {
       boolean make_move = false;
       if(code_seen('F')) {
@@ -2602,7 +2560,7 @@ void process_commands()
         }
       }
       #endif
-			report_active_extruder((int )active_extruder);
+			report_active_extruder( active_extruder );
 		}
   }
   else if (strcmp_P(cmdbuffer[bufindr], PSTR("Electronics_test")) == 0)

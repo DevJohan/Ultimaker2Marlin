@@ -22,6 +22,7 @@
 #ifndef MarlinSerial_h
 #define MarlinSerial_h
 #include "Marlin.h"
+#include "../CommunicationsBridge/printer_data_types.h"
 
 #if !defined(SERIAL_PORT)
 #define SERIAL_PORT 0
@@ -96,11 +97,11 @@ struct tx_ring_buffer
   extern tx_ring_buffer tx_buffer;
 
 
-class MarlinSerial //: public Stream
+class MarlinBinarySerial //: public Stream
 {
 
   public:
-    MarlinSerial();
+    MarlinBinarySerial();
     void begin(long);
     void end();
     int peek(void);
@@ -161,57 +162,29 @@ class MarlinSerial //: public Stream
 
 
     private:
-    void printNumber(unsigned long, uint8_t);
-    void printFloat(double, uint8_t);
 
 
   public:
 
-    FORCE_INLINE void write(const char *str)
-    {
-      while (*str)
-        write(*str++);
-    }
+    template<communication_from_printer message_type, typename... args>
+    void send( args... );
 
+//    FORCE_INLINE void write(const char *str)
+//    {
+//      while (*str)
+//        write(*str++);
+//    }
+//
+//
+//    FORCE_INLINE void write(const uint8_t *buffer, size_t size)
+//    {
+//      while (size--)
+//        write(*buffer++);
+//    }
 
-    FORCE_INLINE void write(const uint8_t *buffer, size_t size)
-    {
-      while (size--)
-        write(*buffer++);
-    }
-
-    FORCE_INLINE void print(const String &s)
-    {
-      for (int i = 0; i < (int)s.length(); i++) {
-        write(s[i]);
-      }
-    }
-
-    FORCE_INLINE void print(const char *str)
-    {
-      write(str);
-    }
-    void print(char, int = BYTE);
-    void print(unsigned char, int = BYTE);
-    void print(int, int = DEC);
-    void print(unsigned int, int = DEC);
-    void print(long, int = DEC);
-    void print(unsigned long, int = DEC);
-    void print(double, int = 2);
-
-    void println(const String &s);
-    void println(const char[]);
-    void println(char, int = BYTE);
-    void println(unsigned char, int = BYTE);
-    void println(int, int = DEC);
-    void println(unsigned int, int = DEC);
-    void println(long, int = DEC);
-    void println(unsigned long, int = DEC);
-    void println(double, int = 2);
-    void println(void);
 };
 
-extern MarlinSerial MSerial;
+extern MarlinBinarySerial MSerial;
 #endif // !AT90USB
 
 #endif

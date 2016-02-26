@@ -4,7 +4,11 @@
 #ifndef MARLIN_H
 #define MARLIN_H
 
-#define VERSION_STRING  "1.0.0"
+#ifndef ARDUINO
+#define ARDUINO 158
+#endif
+
+constexpr char VERSION_STRING[] = "1.0.0";
 
 #define  FORCE_INLINE __attribute__((always_inline)) inline
 
