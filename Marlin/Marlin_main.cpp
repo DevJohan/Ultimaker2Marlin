@@ -284,12 +284,13 @@ uint8_t Stopped = false;
 void get_arc_coordinates();
 bool setTargetedHotend(int code);
 
-void serial_echopair_P(const char *s_P, float v)
+/*void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char *s_P, double v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char *s_P, unsigned long v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
+*/
 
 extern "C"{
   extern unsigned int __bss_end;
@@ -425,10 +426,7 @@ void setup()
 {
   setup_killpin();
   setup_powerhold();
-  MYSERIAL.begin(BAUDRATE);
-  SERIAL_PROTOCOLLNPGM("start");
-  SERIAL_ECHO_START;
-
+  MSerial.begin(BAUDRATE);
   // Check startup - does nothing if bootloader sets MCUSR to 0
   byte mcu = MCUSR;
   report_startup_status(mcu);
@@ -527,8 +525,8 @@ void loop()
 
 void get_command()
 {
-	while( MYSERIAL.available() > 0  && buflen < BUFSIZE) {
-		serial_char = MYSERIAL.read();
+	while( MSerial.available() > 0  && buflen < BUFSIZE) {
+		serial_char = MSerial.read();
 		if(serial_char == '\n' ||
 				serial_char == '\r' ||
 				(serial_char == ':' && comment_mode == false) ||
@@ -1257,17 +1255,14 @@ void process_commands()
           plan_buffer_line(destination[to_index(Axes::X)], destination[to_index(Axes::Y)], destination[to_index(Axes::Z)], destination[to_index(Axes::E)], homing_feedrate[to_index(Axes::X)], active_extruder);
           st_synchronize();
 
-          MSerial.println(height_1, 5);
-          MSerial.println(height_2, 5);
-          MSerial.println(height_3, 5);
           
           //Set the X and Y skew factors for how skewed the bed is (this assumes the leveling points are 1 in the back, and 2 at the front)
           planner_bed_leveling_factor[to_index(Axes::X)] = (height_3 - height_2) / (CONFIG_BED_LEVELING_POINT3_X - CONFIG_BED_LEVELING_POINT2_X);
           planner_bed_leveling_factor[to_index(Axes::Y)] = ((height_2 + height_3) / 2.0 - height_1) / (CONFIG_BED_LEVELING_POINT3_Y - CONFIG_BED_LEVELING_POINT1_Y);
           
-          MSerial.println(planner_bed_leveling_factor[to_index(Axes::X)], 5);
-          MSerial.println(planner_bed_leveling_factor[to_index(Axes::Y)], 5);
-          
+			report_bed_leveling_probe_sequence(height_1, height_2, height_3,
+					planner_bed_leveling_factor[to_index(Axes::X)],
+					planner_bed_leveling_factor[to_index(Axes::Y)]);
           //Correct the Z position. So Z0 is always on top of the bed. We are currently positioned at point 3, on top of the bed.
           destination[to_index(Axes::Z)] = 0.0;
           plan_set_position(destination[to_index(Axes::X)], destination[to_index(Axes::Y)], destination[to_index(Axes::Z)], destination[to_index(Axes::E)]);
@@ -1276,7 +1271,7 @@ void process_commands()
     case 30: // G30 Probe Z at current position and report result.
       destination[to_index(Axes::Z)] = probeWithCapacitiveSensor();
       plan_buffer_line(destination[to_index(Axes::X)], destination[to_index(Axes::Y)], destination[to_index(Axes::Z)], destination[to_index(Axes::E)], homing_feedrate[to_index(Axes::Z)], active_extruder);
-      MSerial.println(destination[to_index(Axes::Z)]);
+      report_bed_leveling_probe_point(destination[to_index(Axes::Z)]);
       break;
 #endif
     case 90: // G90
@@ -1367,9 +1362,9 @@ void process_commands()
 
 #ifdef SDSUPPORT
     case 20: // M20 - list SD card
-      SERIAL_PROTOCOLLNPGM(MSG_BEGIN_FILE_LIST);
+    	serial_sd_card_begin_file_list();
       card.ls();
-      SERIAL_PROTOCOLLNPGM(MSG_END_FILE_LIST);
+      serial_sd_card_end_file_list();
       break;
     case 21: // M21 - init SD card
 
@@ -1746,7 +1741,7 @@ void process_commands()
       }
       break;
     case 115: // M115
-      SERIAL_PROTOCOLPGM(MSG_M115_REPORT);
+      report_firmware_capabilities_string( MSG_FIRMWARE_CAPABILITIES );
       break;
     case 117: // M117 display message
       starpos = (strchr(strchr_pointer + 5,'*'));
@@ -1755,24 +1750,15 @@ void process_commands()
       lcd_setstatus(strchr_pointer + 5);
       break;
     case 114: // M114
-      SERIAL_PROTOCOLPGM("X:");
-      SERIAL_PROTOCOL(current_position[to_index(Axes::X)]);
-      SERIAL_PROTOCOLPGM("Y:");
-      SERIAL_PROTOCOL(current_position[to_index(Axes::Y)]);
-      SERIAL_PROTOCOLPGM("Z:");
-      SERIAL_PROTOCOL(current_position[to_index(Axes::Z)]);
-      SERIAL_PROTOCOLPGM("E:");
-      SERIAL_PROTOCOL(current_position[to_index(Axes::E)]);
-
-      SERIAL_PROTOCOLPGM(MSG_COUNT_X);
-      SERIAL_PROTOCOL(float(st_get_position(Axes::X))/axis_steps_per_unit[to_index(Axes::X)]);
-      SERIAL_PROTOCOLPGM("Y:");
-      SERIAL_PROTOCOL(float(st_get_position(Axes::Y))/axis_steps_per_unit[to_index(Axes::Y)]);
-      SERIAL_PROTOCOLPGM("Z:");
-      SERIAL_PROTOCOL(float(st_get_position(Axes::Z))/axis_steps_per_unit[to_index(Axes::Z)]);
-
-      SERIAL_PROTOCOLLN("");
-      break;
+    	report_current_position(
+    			current_position[to_index(Axes::X)],
+				current_position[to_index(Axes::Y)],
+				current_position[to_index(Axes::Z)],
+				current_position[to_index(Axes::E)],
+				float(st_get_position(Axes::X))/axis_steps_per_unit[to_index(Axes::X)],
+				float(st_get_position(Axes::Y))/axis_steps_per_unit[to_index(Axes::Y)],
+				float(st_get_position(Axes::Z))/axis_steps_per_unit[to_index(Axes::Z)]);
+    	break;
     case 120: // M120
       enable_endstops(false) ;
       break;
@@ -1780,32 +1766,43 @@ void process_commands()
       enable_endstops(true) ;
       break;
     case 119: // M119
-    SERIAL_PROTOCOLLN(MSG_M119_REPORT);
-      #if defined(X_MIN_PIN) && X_MIN_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_X_MIN);
-        SERIAL_PROTOCOLLN(((READ(X_MIN_PIN)^X_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(X_MAX_PIN) && X_MAX_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_X_MAX);
-        SERIAL_PROTOCOLLN(((READ(X_MAX_PIN)^X_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_Y_MIN);
-        SERIAL_PROTOCOLLN(((READ(Y_MIN_PIN)^Y_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_Y_MAX);
-        SERIAL_PROTOCOLLN(((READ(Y_MAX_PIN)^Y_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_Z_MIN);
-        SERIAL_PROTOCOLLN(((READ(Z_MIN_PIN)^Z_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
-        SERIAL_PROTOCOLPGM(MSG_Z_MAX);
-        SERIAL_PROTOCOLLN(((READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING)?MSG_ENDSTOP_HIT:MSG_ENDSTOP_OPEN));
-      #endif
-      break;
+    {
+
+#if defined(X_MIN_PIN) && X_MIN_PIN > -1
+    	endstop_status endstop_X_min = (READ(X_MIN_PIN)^X_ENDSTOPS_INVERTING)?endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+    	endstop_status endstop_X_min = endstop_status::UNUSED;
+#endif
+
+#if defined(X_MAX_PIN) && X_MAX_PIN > -1
+    	endstop_status endstop_X_max = (READ(X_MAX_PIN)^X_ENDSTOPS_INVERTING)?endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+    	endstop_status endstop_X_max = endstop_status::UNUSED;
+#endif
+
+#if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
+    	endstop_status endstop_Y_min =  (READ(Y_MIN_PIN)^Y_ENDSTOPS_INVERTING)?endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+    	endstop_status endstop_Y_min =  endstop_status::UNUSED;
+#endif
+#if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
+		endstop_status endstop_Y_max =  (READ(Y_MAX_PIN)^Y_ENDSTOPS_INVERTING) ? endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+		endstop_status endstop_Y_max =  endstop_status::UNUSED;
+#endif
+#if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
+		endstop_status endstop_Z_min =  (READ(Z_MIN_PIN)^Z_ENDSTOPS_INVERTING) ? endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+		endstop_status endstop_Z_min =  endstop_status::UNUSED;
+#endif
+#if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
+		endstop_status endstop_Z_max =  (READ(Z_MAX_PIN)^Z_ENDSTOPS_INVERTING) ? endstop_status::TRIGGERED:endstop_status::UNTRIGGERD;
+#else
+		endstop_status endstop_Z_max =  endstop_status::UNUSED;
+#endif
+    	report_endstop_status( endstop_X_min,endstop_X_max,endstop_Y_min,endstop_Y_max, endstop_Z_min, endstop_Z_max);
+    }
+    break;
       //TODO: update for all axis, use for loop
     case 201: // M201
       for(int8_t i=0; i < NUM_AXIS; i++)
@@ -2004,19 +2001,12 @@ void process_commands()
         #endif
 
         updatePID();
-        SERIAL_PROTOCOL(MSG_OK);
-        SERIAL_PROTOCOL(" p:");
-        SERIAL_PROTOCOL(Kp);
-        SERIAL_PROTOCOL(" i:");
-        SERIAL_PROTOCOL(unscalePID_i(Ki));
-        SERIAL_PROTOCOL(" d:");
-        SERIAL_PROTOCOL(unscalePID_d(Kd));
-        #ifdef PID_ADD_EXTRUSION_RATE
-        SERIAL_PROTOCOL(" c:");
-        //Kc does not have scaling applied above, or in resetting defaults
-        SERIAL_PROTOCOL(Kc);
-        #endif
-        SERIAL_PROTOCOLLN("");
+#ifdef PID_ADD_EXTRUSION_RATE
+        float kc = Kc;
+#else
+        float kc = 0;
+#endif
+        report_PID_extruder_parameters(Kp, unscalePID_i(Ki), unscalePID_d(Kd), kc);
       }
       break;
     #endif //PIDTEMP
@@ -2094,7 +2084,7 @@ void process_commands()
             lcd_update();
             lifetime_stats_tick();
         }
-        MSerial.println(value, HEX);
+        report_single_cap_probe_reading(value);
       }
     break;
 #endif//ENABLE_BED_LEVELING_PROBE

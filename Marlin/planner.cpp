@@ -60,6 +60,7 @@
 #include "UltiLCD2.h"
 #include "language.h"
 #include "fan_driver.h"
+#include "../CommunicationsBridge/printer_to_remote.h"
 
 //===========================================================================
 //=============================public variables ============================

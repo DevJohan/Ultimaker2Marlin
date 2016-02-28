@@ -9,6 +9,7 @@
 #define PRINTER_TO_REMOTE_H_
 
 #include "language_serial_communication.h"
+#include "printer_data_types.h"
 #include "../Marlin/MarlinSerial.h"
 
 #ifdef REMOTE_SERIAL
@@ -22,55 +23,78 @@ namespace std{
 #endif
 
 
-#define MYSERIAL MSerial
-
-#define SERIAL_PROTOCOL(x) MYSERIAL.print(x);
-#define SERIAL_PROTOCOL_F(x,y) MYSERIAL.print(x,y);
-#define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
-#define SERIAL_PROTOCOLLN(x) do {MYSERIAL.print(x);MYSERIAL.write('\n');} while(0)
-#define SERIAL_PROTOCOLLNPGM(x) do{serialprintPGM(PSTR(x));MYSERIAL.write('\n');} while(0)
+//#define MYSERIAL MSerial
+//
+//#define SERIAL_PROTOCOL(x) MYSERIAL.print(x);
+//#define SERIAL_PROTOCOL_F(x,y) MYSERIAL.print(x,y);
+//#define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
+//#define SERIAL_PROTOCOLLN(x) do {MYSERIAL.print(x);MYSERIAL.write('\n');} while(0)
+//#define SERIAL_PROTOCOLLNPGM(x) do{serialprintPGM(PSTR(x));MYSERIAL.write('\n');} while(0)
 
 
 const char errormagic[] ="Error:";
 const char echomagic[] ="echo:";
-#define SERIAL_ERROR_START serialprintPGM(errormagic);
-#define SERIAL_ERROR(x) SERIAL_PROTOCOL(x)
-#define SERIAL_ERRORPGM(x) SERIAL_PROTOCOLPGM(x)
-#define SERIAL_ERRORLN(x) SERIAL_PROTOCOLLN(x)
-#define SERIAL_ERRORLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
+//#define SERIAL_ERROR_START serialprintPGM(errormagic);
+//#define SERIAL_ERROR(x) SERIAL_PROTOCOL(x)
+//#define SERIAL_ERRORPGM(x) SERIAL_PROTOCOLPGM(x)
+//#define SERIAL_ERRORLN(x) SERIAL_PROTOCOLLN(x)
+//#define SERIAL_ERRORLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
+//
+//#define SERIAL_ECHO_START serialprintPGM(echomagic);
+//#define SERIAL_ECHO(x) SERIAL_PROTOCOL(x)
+//#define SERIAL_ECHOPGM(x) SERIAL_PROTOCOLPGM(x)
+//#define SERIAL_ECHOLN(x) SERIAL_PROTOCOLLN(x)
+//#define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
+//
+//#define SERIAL_ECHOPAIR(name,value) (serial_echopair_P(PSTR(name),(value)))
+//
+//void serial_echopair_P(const char *s_P, float v);
+//void serial_echopair_P(const char *s_P, double v);
+//void serial_echopair_P(const char *s_P, unsigned long v);
 
-#define SERIAL_ECHO_START serialprintPGM(echomagic);
-#define SERIAL_ECHO(x) SERIAL_PROTOCOL(x)
-#define SERIAL_ECHOPGM(x) SERIAL_PROTOCOLPGM(x)
-#define SERIAL_ECHOLN(x) SERIAL_PROTOCOLLN(x)
-#define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
-
-#define SERIAL_ECHOPAIR(name,value) (serial_echopair_P(PSTR(name),(value)))
-
-void serial_echopair_P(const char *s_P, float v);
-void serial_echopair_P(const char *s_P, double v);
-void serial_echopair_P(const char *s_P, unsigned long v);
 
 
+////things to write to serial from Programmemory. saves 400 to 2k of RAM.
+//FORCE_INLINE void serialprintPGM(const char *str)
+//{
+//  char ch=pgm_read_byte(str);
+//  while(ch)
+//  {
+//    MYSERIAL.write(ch);
+//    ch=pgm_read_byte(++str);
+//  }
+//}
 
-//things to write to serial from Programmemory. saves 400 to 2k of RAM.
-FORCE_INLINE void serialprintPGM(const char *str)
-{
-  char ch=pgm_read_byte(str);
-  while(ch)
-  {
-    MYSERIAL.write(ch);
-    ch=pgm_read_byte(++str);
-  }
+
+
+inline void report_startup_status( byte mcu ){
+	MSerial.send<printer_message::REPORT_STARTUP_STATUS>( mcu );
+}
+
+inline std::ostream& remote_report_startup_status( std::ostream& os, byte mcu) {
+	os << "start\n" << "echo:";
+	if (mcu & 1) os << (MSG_POWERUP);
+	if (mcu & 2) os << (MSG_EXTERNAL_RESET);
+	if (mcu & 4) os << (MSG_BROWNOUT_RESET);
+	if (mcu & 8) os << (MSG_WATCHDOG_RESET);
+	if (mcu & 32) os << (MSG_SOFTWARE_RESET);
+	return os << "\n";
 }
 
 
 
+inline void report_firmware_capabilities_string( const char* capabilities_string ){
+	MSerial.send<printer_message::REPORT_FIRMWARE_CAPABILITIES_STRING>(capabilities_string);
+}
+
+inline std::ostream& remote_report_firmware_capabilities_string(std::ostream& os, const char* capabilities_string ){
+	return os << capabilities_string;
+}
 
 
 
 inline void report_ok() {
-	MSerial.send<communication_from_printer::REPORT_OK>();
+	MSerial.send<printer_message::REPORT_OK>();
 }
 
 inline std::ostream& remote_report_ok( std::ostream& os ) {
@@ -80,7 +104,7 @@ inline std::ostream& remote_report_ok( std::ostream& os ) {
 
 
 inline void report_printer_killed() {
-	MSerial.send<communication_from_printer::REPORT_PRINTER_KILLED>();
+	MSerial.send<printer_message::REPORT_PRINTER_KILLED>();
 }
 
 inline std::ostream& remote_report_printer_killed( std::ostream& os ) {
@@ -90,7 +114,7 @@ inline std::ostream& remote_report_printer_killed( std::ostream& os ) {
 
 
 inline void report_printer_stopped() {
-	MSerial.send<communication_from_printer::REPORT_PRINTER_STOPPED>();
+	MSerial.send<printer_message::REPORT_PRINTER_STOPPED>();
 }
 
 inline std::ostream& remote_report_printer_stopped( std::ostream& os ) {
@@ -98,9 +122,17 @@ inline std::ostream& remote_report_printer_stopped( std::ostream& os ) {
 }
 
 
+void report_step_rate_too_high(unsigned short step_rate) {
+	MSerial.send<printer_message::REPORT_STEP_RATE_TOO_HIGH>(step_rate);
+}
+
+inline std::ostream& remote_report_step_rate_to_high(std::ostream& os, unsigned short step_rate) {
+	return os << (MSG_STEPPER_TOO_HIGH) << step_rate << "\n";
+}
+
 
 inline void report_cold_extrusion_prevented() {
-	MSerial.send<communication_from_printer::REPORT_COLD_EXTRUSION_PREVENTED>();
+	MSerial.send<printer_message::REPORT_COLD_EXTRUSION_PREVENTED>();
 }
 
 inline std::ostream& remote_report_cold_extrusion_prevented( std::ostream& os) {
@@ -110,7 +142,7 @@ inline std::ostream& remote_report_cold_extrusion_prevented( std::ostream& os) {
 
 
 inline void report_too_long_extrusion_prevented() {
-	MSerial.send<communication_from_printer::REPORT_TOO_LONG_EXTRUSION_PREVENTED>();
+	MSerial.send<printer_message::REPORT_TOO_LONG_EXTRUSION_PREVENTED>();
 }
 
 inline std::ostream& remote_report_too_long_extrusion_prevented(std::ostream& os) {
@@ -136,7 +168,7 @@ inline void report_current_printer_settings(
 		float unscalePID_i,
 		float unscalePID_d
 ) {
-	MSerial.send<communication_from_printer::REPORT_CURRENT_PRINTER_SETTINGS>(
+	MSerial.send<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>(
 			axis_steps_per_unit,
 			max_feedrate,
 			max_acceleration_units_per_sq_second,
@@ -215,7 +247,7 @@ inline std::ostream& remote_report_current_printer_settings( std::ostream& os,
 
 
 inline void report_settings_stored() {
-	MSerial.send<communication_from_printer::REPORT_SETTINGS_STORED>();
+	MSerial.send<printer_message::REPORT_SETTINGS_STORED>();
 }
 
 inline std::ostream& remote_report_settings_stored(std::ostream& os) {
@@ -225,7 +257,7 @@ inline std::ostream& remote_report_settings_stored(std::ostream& os) {
 
 
 inline void report_settings_retrieved() {
-	MSerial.send<communication_from_printer::REPORT_SETTINGS_RETRIEVED>();
+	MSerial.send<printer_message::REPORT_SETTINGS_RETRIEVED>();
 }
 
 inline std::ostream& remote_report_settings_retrieved(std::ostream& os) {
@@ -235,9 +267,7 @@ inline std::ostream& remote_report_settings_retrieved(std::ostream& os) {
 
 
 inline void report_factory_settings_restored() {
-	MSerial.send<communication_from_printer::REPORT_FACTORY_SETTINGS_RESTORED>();
-	SERIAL_ECHO_START;
-	SERIAL_ECHOLNPGM("Hardcoded Default Settings Loaded");
+	MSerial.send<printer_message::REPORT_FACTORY_SETTINGS_RESTORED>();
 }
 
 inline std::ostream& remote_report_factory_settings_restored(std::ostream& os) {
@@ -247,7 +277,7 @@ inline std::ostream& remote_report_factory_settings_restored(std::ostream& os) {
 
 
 inline void report_enqueing_command( const char* enqued_command) {
-	MSerial.send<communication_from_printer::REPORT_ENQUEING_COMMAND>( enqued_command );
+	MSerial.send<printer_message::REPORT_ENQUEING_COMMAND>( enqued_command );
 }
 
 inline std::ostream& remote_report_enqueing_command(std::ostream& os, const char* enqued_command) {
@@ -256,23 +286,10 @@ inline std::ostream& remote_report_enqueing_command(std::ostream& os, const char
 
 
 
-inline void report_startup_status( byte mcu ){
-	MSerial.send<communication_from_printer::REPORT_STARTUP_STATUS>( mcu );
-}
-
-inline std::ostream& remote_report_startup_status( std::ostream& os, byte mcu) {
-	if (mcu & 1) os << (MSG_POWERUP);
-	if (mcu & 2) os << (MSG_EXTERNAL_RESET);
-	if (mcu & 4) os << (MSG_BROWNOUT_RESET);
-	if (mcu & 8) os << (MSG_WATCHDOG_RESET);
-	if (mcu & 32) os << (MSG_SOFTWARE_RESET);
-	return os;
-}
-
 
 
 inline void report_firmware_information(int free_memory, int planner_buffer_bytes){
-	MSerial.send<communication_from_printer::REPORT_FIRMWARE_INFORMATION>(
+	MSerial.send<printer_message::REPORT_FIRMWARE_INFORMATION>(
 			free_memory,planner_buffer_bytes
 	);
 }
@@ -306,7 +323,7 @@ inline std::ostream& remote_report_firmware_information(std::ostream& os, int fr
 
 
 inline void report_file_saved() {
-	MSerial.send<communication_from_printer::REPORT_FILE_SAVED>();
+	MSerial.send<printer_message::REPORT_FILE_SAVED>();
 }
 inline std::ostream& remote_report_file_saved(std::ostream& os) {
 	return os << (MSG_FILE_SAVED) << "\n";
@@ -315,7 +332,7 @@ inline std::ostream& remote_report_file_saved(std::ostream& os) {
 
 
 inline void report_active_extruder( uint8_t extruder) {
-	MSerial.send<communication_from_printer::REPORT_ACTIVE_EXTRUDER>( extruder );
+	MSerial.send<printer_message::REPORT_ACTIVE_EXTRUDER>( extruder );
 }
 
 inline std::ostream& remote_report_active_extruder(std::ostream& os, uint8_t extruder) {
@@ -326,7 +343,7 @@ inline std::ostream& remote_report_active_extruder(std::ostream& os, uint8_t ext
 
 
 inline void report_unknown_command( const char* unknown_command) {
-	MSerial.send<communication_from_printer::REPORT_UNKNOWN_COMMAND>( unknown_command );
+	MSerial.send<printer_message::REPORT_UNKNOWN_COMMAND>( unknown_command );
 }
 
 inline std::ostream& remote_report_unknown_command( std::ostream& os,const char* unknown_command) {
@@ -336,7 +353,7 @@ inline std::ostream& remote_report_unknown_command( std::ostream& os,const char*
 
 
 inline void report_wrong_extruder_specified(int16_t command_code, uint8_t extruder) {
-	MSerial.send<communication_from_printer::REPORT_WRONG_EXTRUDER_SPECIFIED>(command_code, extruder );
+	MSerial.send<printer_message::REPORT_WRONG_EXTRUDER_SPECIFIED>(command_code, extruder );
 }
 
 inline std::ostream& remote_report_wrong_extruder_specified(std::ostream& os,int command_code, uint8_t extruder) {
@@ -359,7 +376,7 @@ inline std::ostream& remote_report_wrong_extruder_specified(std::ostream& os,int
 
 
 inline void report_invalid_extruder_specified( uint8_t extruder) {
-	MSerial.send<communication_from_printer::REPORT_INVALID_EXTRUDER_SPECIFIED>(extruder);
+	MSerial.send<printer_message::REPORT_INVALID_EXTRUDER_SPECIFIED>(extruder);
 }
 
 inline std::ostream& remote_report_invalid_extruder_specified(std::ostream& os, uint8_t extruder) {
@@ -371,7 +388,7 @@ inline std::ostream& remote_report_invalid_extruder_specified(std::ostream& os, 
 
 inline void issue_resend_request(long LastN) {
 //TODO::Should this be here: MYSERIAL.flush();
-	MSerial.send<communication_from_printer::ISSUE_RESEND_REQUEST>(LastN+1);
+	MSerial.send<printer_message::ISSUE_RESEND_REQUEST>(LastN+1);
 }
 
 inline std::ostream& remote_issue_resend_request(std::ostream& os, long LastN) {
@@ -381,7 +398,7 @@ inline std::ostream& remote_issue_resend_request(std::ostream& os, long LastN) {
 
 
 inline void report_error_in_line_number(long LastN) {
-	MSerial.send<communication_from_printer::REPORT_ERROR_IN_LINE_NUMBER>();
+	MSerial.send<printer_message::REPORT_ERROR_IN_LINE_NUMBER>();
 }
 
 inline std::ostream& remote_report_error_in_line_number(std::ostream& os, long LastN) {
@@ -391,7 +408,7 @@ inline std::ostream& remote_report_error_in_line_number(std::ostream& os, long L
 
 
 inline void report_error_in_checksum(long LastN) {
-	MSerial.send<communication_from_printer::REPORT_ERROR_IN_CHECKSUM>(LastN);
+	MSerial.send<printer_message::REPORT_ERROR_IN_CHECKSUM>(LastN);
 }
 
 inline std::ostream& remote_report_error_in_checksum(std::ostream& os, long LastN) {
@@ -401,7 +418,7 @@ inline std::ostream& remote_report_error_in_checksum(std::ostream& os, long Last
 
 
 inline void report_missing_checksum(long LastN) {
-	MSerial.send<communication_from_printer::REPORT_MISSING_CHECKSUM>(LastN);
+	MSerial.send<printer_message::REPORT_MISSING_CHECKSUM>(LastN);
 }
 
 inline std::ostream& remote_report_missing_checksum(std::ostream& os, long LastN) {
@@ -411,7 +428,7 @@ inline std::ostream& remote_report_missing_checksum(std::ostream& os, long LastN
 
 
 inline void report_no_line_number_with_checksum(long LastN) {
-	MSerial.send<communication_from_printer::REPORT_NO_LINE_NUMBER_WITH_CHECKSUM>();
+	MSerial.send<printer_message::REPORT_NO_LINE_NUMBER_WITH_CHECKSUM>();
 }
 
 inline std::ostream& remote_report_no_line_number_with_checksum(std::ostream& os, long LastN) {
@@ -420,7 +437,7 @@ inline std::ostream& remote_report_no_line_number_with_checksum(std::ostream& os
 
 
 inline void report_time_elapsed(unsigned long time_seconds ) {
-	MSerial.send<communication_from_printer::REPORT_TIME_ELAPSED>(time_seconds);
+	MSerial.send<printer_message::REPORT_TIME_ELAPSED>(time_seconds);
 }
 
 inline std::ostream& remote_report_time_elapsed( std::ostream& os, unsigned long time_seconds ) {
@@ -430,7 +447,7 @@ inline std::ostream& remote_report_time_elapsed( std::ostream& os, unsigned long
 
 
 inline void report_file_printed( unsigned long time_seconds ) {
-	MSerial.send<communication_from_printer::REPORT_FILE_PRINTED>(time_seconds);
+	MSerial.send<printer_message::REPORT_FILE_PRINTED>(time_seconds);
 }
 
 inline std::ostream& remote_report_file_printed(std::ostream& os, unsigned long time_seconds ) {
@@ -441,7 +458,7 @@ inline std::ostream& remote_report_file_printed(std::ostream& os, unsigned long 
 
 
 inline void report_endstop_not_pressed_after_homing() {
-	MSerial.send<communication_from_printer::REPORT_ENDSTOP_NOT_PRESSED_AFTER_HOMING>();
+	MSerial.send<printer_message::REPORT_ENDSTOP_NOT_PRESSED_AFTER_HOMING>();
 }
 
 inline std::ostream& remote_report_endstop_not_pressed_after_homing(std::ostream& os) {
@@ -451,7 +468,7 @@ inline std::ostream& remote_report_endstop_not_pressed_after_homing(std::ostream
 
 
 inline void report_error_endstop_still_pressed() {
-	MSerial.send<communication_from_printer::REPORT_ERROR_ENDSTOP_STILL_PRESSED>();
+	MSerial.send<printer_message::REPORT_ERROR_ENDSTOP_STILL_PRESSED>();
 }
 
 inline std::ostream& remote_report_error_endstop_still_pressed( std::ostream& os ){
@@ -461,7 +478,7 @@ inline std::ostream& remote_report_error_endstop_still_pressed( std::ostream& os
 
 
 inline void report_temperature_and_power(uint8_t extruder, float deg_hotend, float target_hotend, float deg_bed, float target_bed, uint8_t heater_power, uint8_t bed_power) {
-	MSerial.send<communication_from_printer::REPORT_TEMPERATURE_AND_POWER>(extruder, deg_hotend, target_hotend, deg_bed, target_bed, heater_power, bed_power);
+	MSerial.send<printer_message::REPORT_TEMPERATURE_AND_POWER>(extruder, deg_hotend, target_hotend, deg_bed, target_bed, heater_power, bed_power);
 }
 
 inline std::ostream& remote_report_temperature_and_power(std::ostream& os, uint8_t extruder, float deg_hotend, float target_hotend, float deg_bed, float target_bed, uint8_t heater_power, uint8_t bed_power) {
@@ -473,7 +490,7 @@ inline std::ostream& remote_report_temperature_and_power(std::ostream& os, uint8
 
 
 inline void report_wait_for_temperature( uint8_t extruder, float deg_hotend, char residency, int16_t time_left_seconds ){
-	MSerial.send<communication_from_printer::REPORT_WAIT_FOR_TEMPERATURE>(extruder, deg_hotend,residency, time_left_seconds );
+	MSerial.send<printer_message::REPORT_WAIT_FOR_TEMPERATURE>(extruder, deg_hotend,residency, time_left_seconds );
 }
 
 inline std::ostream& remote_report_wait_for_temperature( std::ostream& os, uint8_t extruder, float deg_hotend, char residency, int16_t time_left_seconds ){
@@ -491,7 +508,7 @@ inline std::ostream& remote_report_wait_for_temperature( std::ostream& os, uint8
 
 
 inline void report_wait_for_temperature_bed(uint8_t extruder, float deg_hotend, float deg_bed) {
-	MSerial.send<communication_from_printer::REPORT_WAIT_FOR_TEMPERATURE_BED>( extruder, deg_hotend, deg_bed);
+	MSerial.send<printer_message::REPORT_WAIT_FOR_TEMPERATURE_BED>( extruder, deg_hotend, deg_bed);
 }
 
 inline std::ostream& remote_report_wait_for_temperature_bed(std::ostream& os, uint8_t extruder, float deg_hotend, float deg_bed) {
@@ -501,7 +518,7 @@ inline std::ostream& remote_report_wait_for_temperature_bed(std::ostream& os, ui
 
 
 inline void report_lcd_button_info(int16_t encoder_pos, uint8_t button_down) {
-	MSerial.send<communication_from_printer::REPORT_LCD_BUTTON_INFO>( encoder_pos, button_down );
+	MSerial.send<printer_message::REPORT_LCD_BUTTON_INFO>( encoder_pos, button_down );
 }
 
 inline std::ostream& remote_report_lcd_button_info(std::ostream& os, int16_t encoder_pos, uint8_t button_down) {
@@ -510,15 +527,219 @@ inline std::ostream& remote_report_lcd_button_info(std::ostream& os, int16_t enc
 
 
 
+inline void report_bed_leveling_probe_sequence(float height_1, float height_2,
+		float height_3, float bed_leveling_factor_x, float bed_leveling_factor_y) {
+	MSerial.send<printer_message::REPORT_BED_LEVELING_PROBE_SEQUENCE>(
+			height_1,
+			height_2,
+			height_3,
+			bed_leveling_factor_x,
+			bed_leveling_factor_y);
+}
+
+inline std::ostream& remote_report_bed_leveling_probe_sequence( std::ostream& os, float height_1, float height_2,
+		float height_3, float bed_leveling_factor_x, float bed_leveling_factor_y) {
+	os <<
+			height_1 << "\n" <<
+			height_2 << "\n" <<
+			height_3 << "\n" <<
+			bed_leveling_factor_x << "\n" <<
+			bed_leveling_factor_y << "\n";
+	return os;
+}
+
+
+void report_bed_leveling_probe_point(float dest_z) {
+	MSerial.send<printer_message::REPORT_BED_LEVELING_PROBE_POINT>( dest_z );
+}
+inline std::ostream& remote_report_bed_leveling_probe_point( std::ostream& os, float dest_z ) {
+	return os << dest_z << "\n";
+}
+
+
+inline void report_single_cap_probe_reading(uint16_t value) {
+	MSerial.send<printer_message::REPORT_SINGLE_CAP_PROBE_VALUE>( value );
+}
+
+inline std::ostream& remote_report_single_cap_probe_reading( std::ostream& os, uint16_t value) {
+#ifdef REMOTE_SERIAL
+	auto flags = os.flags();
+	os << std::hex << value << "\n";
+	os.flags(flags);
+#endif
+	return os;
+}
+
+
+inline void report_microstep_settings(
+		int ms_X1, int ms_X2, int ms_Y1, int ms_Y2, int ms_Z1, int ms_Z2,
+		int ms_E0_1, int ms_E0_2, int ms_E1_1, int ms_E1_2
+){
+	MSerial.send<printer_message::REPORT_MICROSTEP_SETTINGS>(
+			ms_X1, ms_X2, ms_Y1, ms_Y2, ms_Z1, ms_Z2,
+			ms_E0_1, ms_E0_2, ms_E1_1, ms_E1_2);
+}
+
+inline std::ostream& remote_report_microstep_settings(
+		std::ostream& os, int ms_X1, int ms_X2, int ms_Y1, int ms_Y2, int ms_Z1, int ms_Z2,
+		int ms_E0_1, int ms_E0_2, int ms_E1_1, int ms_E1_2
+){
+	os << "MS1,MS2 Pins\n";
+	os << "X: " << ms_X1 << ms_X2 << "\n";
+	os << "Y: " << ms_Y1 << ms_Y2 << "\n";
+	os << "Z: " << ms_Z1 << ms_Z2 << "\n";
+	os << "E0: " << ms_E0_1 << ms_E0_2 << "\n";
+	os << "E1: " << ms_E1_1 << ms_E1_2 << "\n";
+	return os;
+}
+
+
+enum class endstop_status: int8_t {
+	UNUSED = -1,
+	UNTRIGGERD = 0,
+	TRIGGERED = 1,
+};
+void report_endstop_status(
+		endstop_status x_min, endstop_status x_max,
+		endstop_status y_min, endstop_status y_max,
+		endstop_status z_min, endstop_status z_max
+){
+	MSerial.send<printer_message::REPORT_ENDSTOP_STATUS>(
+			x_min, x_max, y_min, y_max, z_min, z_max );
+}
+inline std::ostream& remote_report_endstop_status(
+		std::ostream& os,
+		endstop_status x_min, endstop_status x_max,
+		endstop_status y_min, endstop_status y_max,
+		endstop_status z_min, endstop_status z_max
+){
+	os << (MSG_M119_REPORT) << "\n";
+	if( x_min != endstop_status::UNUSED )
+		os << (MSG_X_MIN) << (x_min == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	if( x_max != endstop_status::UNUSED )
+		os << (MSG_X_MAX) << (x_max == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	if( y_min != endstop_status::UNUSED )
+		os << (MSG_Y_MIN) << (y_min == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	if( y_max != endstop_status::UNUSED )
+		os << (MSG_Y_MAX) << (y_max == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	if( z_min != endstop_status::UNUSED )
+		os << (MSG_Z_MIN) << (z_min == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	if( z_max != endstop_status::UNUSED )
+		os << (MSG_Z_MAX) << (z_max == endstop_status::TRIGGERED ? (MSG_ENDSTOPS_HIT) : (MSG_ENDSTOP_OPEN)) << "\n";
+	return os;
+}
+
+inline void report_endstop_hit(Axes axis, float position){
+	MSerial.send<printer_message::REPORT_ENDSTOP_HIT>(axis,position);
+}
+
+inline std::ostream& remote_report_end_stop_hit(std::ostream& os, Axes axis, float position){
+	os << (MSG_ENDSTOPS_HIT);
+	switch(axis){
+	case Axes::X:
+		os << " X:" << position << "\n"; break;
+	case Axes::Y:
+		os << " Y:" << position << "\n"; break;
+	case Axes::Z:
+		os << " Z:" << position << "\n"; break;
+	//case Axes::E: //TODO: report out of filament??
+	default:
+		os << "unknown axis (Axes)" << static_cast<int>(axis) << ": " << position << "\n";
+	}
+	return os;
+}
+
+
+void report_current_position(
+		float i_x, float i_y, float i_z, float i_e,
+		float j_x, float j_y, float j_z
+){
+	MSerial.send<printer_message::REPORT_CURRENT_POSITION>(
+			i_x, i_y,i_z,i_e, j_x, j_y, j_z );
+}
+
+inline std::ostream& remote_report_current_position(
+		std::ostream& os, float i_x, float i_y, float i_z, float i_e,
+		float j_x, float j_y, float j_z
+){
+	os <<
+			"X:" << i_x << "Y:" << i_y << "Z:" << i_z << "E:" << i_e <<
+			(MSG_COUNT_X) << j_x << "Y:" << j_y << "Z:" << j_z << "\n";
+	return os;
+}
+
+
+
+void report_PID_extruder_parameters(
+		float kp, float unscaled_ki,
+		float unscaled_kd, float kc
+){
+	MSerial.send<printer_message::REPORT_PID_EXTRUDER_PARAMETERS>(
+			kp, unscaled_ki, unscaled_kd, kc );
+}
+
+inline std::ostream& remote_report_PID_extruder_parameters(
+		std::ostream& os, float kp, float unscaled_ki,
+		float unscaled_kd, float kc
+){
+	os << (MSG_OK) <<
+			" p:" << kp <<
+			" i:" << unscaled_ki <<
+			" d:" << unscaled_kd <<
+			" c:" << kc << "\n";
+	return os;
+}
+
 
 
 
 inline void report_fiset_full_data( int16_t data_count, uint8_t gain, uint16_t magnitude, int16_t data ){
-	MSerial.send<communication_from_printer::REPORT_FISET_FULL_DATA>( data_count, gain, magnitude, data );
+	MSerial.send<printer_message::REPORT_FISET_FULL_DATA>( data_count, gain, magnitude, data );
 }
 
 inline std::ostream& remote_report_fiset_full_data( std::ostream& os, int16_t data_count, uint8_t gain, uint16_t magnitude, int16_t data ){
 	return os << "Fiset no " << data_count << ": " << gain << " " << magnitude << " " << data << "\n";
+}
+
+
+
+void serial_sd_card_begin_file_list() {
+	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::BEGIN_FILE_LIST>();
+}
+
+inline std::ostream& remote_serial_sd_card_begin_file_list( std::ostream& os ) {
+	return os << (MSG_BEGIN_FILE_LIST);
+}
+
+void serial_sd_card_end_file_list() {
+	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::END_FILE_LIST>();
+}
+
+inline std::ostream& remote_serial_sd_card_end_file_list( std::ostream& os ) {
+	return os << (MSG_END_FILE_LIST);
+}
+
+
+
+void report_PID_autotune_start() {
+	SERIAL_ECHOLN("PID Autotune start");
+}
+
+void report_PID_autotune_failed_temperature_too_high() {
+	SERIAL_PROTOCOLLNPGM("PID Autotune failed! Temperature too high");
+}
+
+void report_PID_autotune_finished() {
+	SERIAL_PROTOCOLLNPGM(
+			"PID Autotune finished! Put the Kp, Ki and Kd constants into Configuration.h");
+}
+
+void report_PID_autotune_failed_timeout() {
+	SERIAL_PROTOCOLLNPGM("PID Autotune failed! timeout");
+}
+
+void report_PID_autotune_failed_bad_extruder() {
+	SERIAL_ECHOLN("PID Autotune failed. Bad extruder number.");
 }
 
 

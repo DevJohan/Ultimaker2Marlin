@@ -57,13 +57,10 @@ private:
 	unsigned char _sreg;
 };
 
-#include "../CommunicationsBridge/printer_to_remote.h"
-
 #include "WString.h"
 
 
-
-
+#define MSG_FIRMWARE_CAPABILITIES "FIRMWARE_NAME:Marlin Ultimaker2; Sprinter/grbl mashup for gen6 FIRMWARE_URL:" FIRMWARE_URL " PROTOCOL_VERSION:" PROTOCOL_VERSION " MACHINE_TYPE:" MACHINE_NAME " EXTRUDER_COUNT:" STRINGIFY(EXTRUDERS) "\n"
 
 
 void get_command();

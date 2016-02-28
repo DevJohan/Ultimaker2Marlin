@@ -34,7 +34,7 @@
 #if defined(DIGIPOTSS_PIN) && DIGIPOTSS_PIN > -1
 #include <SPI.h>
 #endif
-
+#include "../CommunicationsBridge/printer_to_remote.h"
 
 //===========================================================================
 //=============================public variables  ============================
@@ -196,21 +196,18 @@ asm volatile ( \
 void checkHitEndstops()
 {
  if( endstop_x_hit || endstop_y_hit || endstop_z_hit) {
-   SERIAL_ECHO_START;
-   SERIAL_ECHOPGM(MSG_ENDSTOPS_HIT);
    if(endstop_x_hit) {
-     SERIAL_ECHOPAIR(" X:",(float)endstops_trigsteps[to_index(Axes::X)]/axis_steps_per_unit[to_index(Axes::X)]);
+	 report_endstop_hit(Axes::X, (float)endstops_trigsteps[to_index(Axes::X)]/axis_steps_per_unit[to_index(Axes::X)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "X");
    }
    if(endstop_y_hit) {
-     SERIAL_ECHOPAIR(" Y:",(float)endstops_trigsteps[to_index(Axes::Y)]/axis_steps_per_unit[to_index(Axes::Y)]);
+     report_endstop_hit(Axes::Y, (float)endstops_trigsteps[to_index(Axes::Y)]/axis_steps_per_unit[to_index(Axes::Y)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Y");
    }
    if(endstop_z_hit) {
-     SERIAL_ECHOPAIR(" Z:",(float)endstops_trigsteps[to_index(Axes::Z)]/axis_steps_per_unit[to_index(Axes::Z)]);
+     report_endstop_hit(Axes::Z, (float)endstops_trigsteps[to_index(Axes::Z)]/axis_steps_per_unit[to_index(Axes::Z)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
    }
-   SERIAL_ECHOLN("");
    endstop_x_hit=false;
    endstop_y_hit=false;
    endstop_z_hit=false;
@@ -271,7 +268,6 @@ void step_wait(){
     }
 }
 
-
 FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
   unsigned short timer;
   if(step_rate > MAX_STEP_FREQUENCY) step_rate = MAX_STEP_FREQUENCY;
@@ -303,7 +299,10 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
     timer = (unsigned short)pgm_read_word_near(table_address);
     timer -= (((unsigned short)pgm_read_word_near(table_address+2) * (unsigned char)(step_rate & 0x0007))>>3);
   }
-  if(timer < 100) { timer = 100; MYSERIAL.print(MSG_STEPPER_TOO_HIGH); MYSERIAL.println(step_rate); }//(20kHz this should never happen)
+	if (timer < 100) {
+		timer = 100;
+		report_step_rate_too_high(step_rate);
+	} //(20kHz this should never happen)
   return timer;
 }
 
@@ -1038,21 +1037,11 @@ void microstep_mode(uint8_t driver, uint8_t stepping_mode)
 
 void microstep_readings()
 {
-      SERIAL_PROTOCOLPGM("MS1,MS2 Pins\n");
-      SERIAL_PROTOCOLPGM("X: ");
-      SERIAL_PROTOCOL(   digitalRead(X_MS1_PIN));
-      SERIAL_PROTOCOLLN( digitalRead(X_MS2_PIN));
-      SERIAL_PROTOCOLPGM("Y: ");
-      SERIAL_PROTOCOL(   digitalRead(Y_MS1_PIN));
-      SERIAL_PROTOCOLLN( digitalRead(Y_MS2_PIN));
-      SERIAL_PROTOCOLPGM("Z: ");
-      SERIAL_PROTOCOL(   digitalRead(Z_MS1_PIN));
-      SERIAL_PROTOCOLLN( digitalRead(Z_MS2_PIN));
-      SERIAL_PROTOCOLPGM("E0: ");
-      SERIAL_PROTOCOL(   digitalRead(E0_MS1_PIN));
-      SERIAL_PROTOCOLLN( digitalRead(E0_MS2_PIN));
-      SERIAL_PROTOCOLPGM("E1: ");
-      SERIAL_PROTOCOL(   digitalRead(E1_MS1_PIN));
-      SERIAL_PROTOCOLLN( digitalRead(E1_MS2_PIN));
+	report_microstep_settings(
+			digitalRead( X_MS1_PIN ), digitalRead( X_MS2_PIN ),
+			digitalRead( Y_MS1_PIN ), digitalRead( Y_MS2_PIN ),
+			digitalRead( Z_MS1_PIN ), digitalRead( Z_MS2_PIN ),
+			digitalRead( E0_MS1_PIN), digitalRead( E0_MS2_PIN),
+			digitalRead( E1_MS1_PIN), digitalRead( E1_MS2_PIN));
 }
 

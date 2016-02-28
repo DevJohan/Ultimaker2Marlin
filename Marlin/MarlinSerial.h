@@ -92,10 +92,8 @@ struct tx_ring_buffer
 
 #if UART_PRESENT(SERIAL_PORT)
   extern ring_buffer rx_buffer;
-#endif
-
   extern tx_ring_buffer tx_buffer;
-
+#endif
 
 class MarlinBinarySerial //: public Stream
 {
@@ -166,8 +164,11 @@ class MarlinBinarySerial //: public Stream
 
   public:
 
-    template<communication_from_printer message_type, typename... args>
+    template<printer_message message_type, typename... args>
     void send( args... );
+
+    template<printer_message message_type, sdcard_messages sub_type, typename... args>
+    void send_sd_message( args... );
 
 //    FORCE_INLINE void write(const char *str)
 //    {

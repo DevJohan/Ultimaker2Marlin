@@ -161,6 +161,8 @@ unsigned long watchmillis[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0,0,0);
 #ifdef HEATER_0_USES_MAX6675
 static int read_max6675();
 #endif
+
+
 //===========================================================================
 //=============================   functions      ============================
 //===========================================================================
@@ -187,11 +189,11 @@ void PID_autotune(float temp, int extruder, int ncycles)
        ||(extruder < 0)
   #endif
        ){
-          SERIAL_ECHOLN("PID Autotune failed. Bad extruder number.");
+		report_PID_autotune_failed_bad_extruder();
           return;
         }
 
-  SERIAL_ECHOLN("PID Autotune start");
+	report_PID_autotune_start();
 
   disable_heater(); // switch off all heaters.
 
@@ -285,7 +287,7 @@ void PID_autotune(float temp, int extruder, int ncycles)
       }
     }
     if(input > (temp + 20)) {
-      SERIAL_PROTOCOLLNPGM("PID Autotune failed! Temperature too high");
+			report_PID_autotune_failed();
       return;
     }
     if(millis() - temp_millis > 2000) {
@@ -305,11 +307,11 @@ void PID_autotune(float temp, int extruder, int ncycles)
       temp_millis = millis();
     }
     if(((millis() - t1) + (millis() - t2)) > (10L*60L*1000L*2L)) {
-      SERIAL_PROTOCOLLNPGM("PID Autotune failed! timeout");
+			report_PID_autotune_failed_timeout();
       return;
     }
     if(cycles > ncycles) {
-      SERIAL_PROTOCOLLNPGM("PID Autotune finished! Put the Kp, Ki and Kd constants into Configuration.h");
+			report_PID_autotune_finished();
       return;
     }
     lcd_update();
