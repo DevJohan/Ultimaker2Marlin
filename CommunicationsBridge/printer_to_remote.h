@@ -122,7 +122,7 @@ inline std::ostream& remote_report_printer_stopped( std::ostream& os ) {
 }
 
 
-void report_step_rate_too_high(unsigned short step_rate) {
+inline void report_step_rate_too_high(unsigned short step_rate) {
 	MSerial.send<printer_message::REPORT_STEP_RATE_TOO_HIGH>(step_rate);
 }
 
@@ -355,7 +355,6 @@ inline std::ostream& remote_report_unknown_command( std::ostream& os,const char*
 inline void report_wrong_extruder_specified(int16_t command_code, uint8_t extruder) {
 	MSerial.send<printer_message::REPORT_WRONG_EXTRUDER_SPECIFIED>(command_code, extruder );
 }
-
 inline std::ostream& remote_report_wrong_extruder_specified(std::ostream& os,int command_code, uint8_t extruder) {
 	switch (command_code) {
 	case 104:
@@ -373,6 +372,45 @@ inline std::ostream& remote_report_wrong_extruder_specified(std::ostream& os,int
 	}
 	return os << (extruder) << "\n";
 }
+
+
+
+inline void report_read_wrong_extruder(uint8_t extruder) {
+	MSerial.send<printer_message::REPORT_READ_WRONG_EXTRUDER>(extruder);
+}
+inline std::ostream& remote_report_read_wrong_extruder(std::ostream& os, uint8_t e) {
+	return os << errormagic << +e << " - Invalid extruder number !\n";
+}
+
+
+
+inline void report_error_maxtemp_triggered(uint8_t e) {
+	MSerial.send<printer_message::REPORT_ERROR_MAXTEMP>(e);
+}
+inline std::ostream& remote_report_error_maxtemp_triggered(std::ostream& os, uint8_t e) {
+	return os << errormagic << +e << ": Extruder switched off. MAXTEMP triggered !\n";
+}
+
+
+
+inline void report_error_mintemp_triggered(uint8_t e) {
+	MSerial.send<printer_message::REPORT_ERROR_MINTEMP>(e);
+}
+inline std::ostream& remote_report_error_mintemp_triggered(std::ostream& os, uint8_t e) {
+	return os << errormagic << +e << ": Extruder switched off. MINTEMP triggered !\n";
+}
+
+
+
+
+inline void report_error_maxtemp_bed_triggered() {
+	MSerial.send<printer_message::REPORT_ERROR_MAXTEMP_BED>();
+}
+
+inline std::ostream& remote_report_error_maxtemp_bed_triggered(std::ostream& os) {
+	return os << errormagic << "Temperature heated bed switched off. MAXTEMP triggered !!\n";
+}
+
 
 
 inline void report_invalid_extruder_specified( uint8_t extruder) {
@@ -549,7 +587,7 @@ inline std::ostream& remote_report_bed_leveling_probe_sequence( std::ostream& os
 }
 
 
-void report_bed_leveling_probe_point(float dest_z) {
+inline void report_bed_leveling_probe_point(float dest_z) {
 	MSerial.send<printer_message::REPORT_BED_LEVELING_PROBE_POINT>( dest_z );
 }
 inline std::ostream& remote_report_bed_leveling_probe_point( std::ostream& os, float dest_z ) {
@@ -599,7 +637,7 @@ enum class endstop_status: int8_t {
 	UNTRIGGERD = 0,
 	TRIGGERED = 1,
 };
-void report_endstop_status(
+inline void report_endstop_status(
 		endstop_status x_min, endstop_status x_max,
 		endstop_status y_min, endstop_status y_max,
 		endstop_status z_min, endstop_status z_max
@@ -650,7 +688,7 @@ inline std::ostream& remote_report_end_stop_hit(std::ostream& os, Axes axis, flo
 }
 
 
-void report_current_position(
+inline void report_current_position(
 		float i_x, float i_y, float i_z, float i_e,
 		float j_x, float j_y, float j_z
 ){
@@ -670,7 +708,7 @@ inline std::ostream& remote_report_current_position(
 
 
 
-void report_PID_extruder_parameters(
+inline void report_PID_extruder_parameters(
 		float kp, float unscaled_ki,
 		float unscaled_kd, float kc
 ){
@@ -703,7 +741,7 @@ inline std::ostream& remote_report_fiset_full_data( std::ostream& os, int16_t da
 
 
 
-void serial_sd_card_begin_file_list() {
+inline void serial_sd_card_begin_file_list() {
 	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::BEGIN_FILE_LIST>();
 }
 
@@ -711,7 +749,7 @@ inline std::ostream& remote_serial_sd_card_begin_file_list( std::ostream& os ) {
 	return os << (MSG_BEGIN_FILE_LIST);
 }
 
-void serial_sd_card_end_file_list() {
+inline void serial_sd_card_end_file_list() {
 	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::END_FILE_LIST>();
 }
 
@@ -719,29 +757,169 @@ inline std::ostream& remote_serial_sd_card_end_file_list( std::ostream& os ) {
 	return os << (MSG_END_FILE_LIST);
 }
 
-
-
-void report_PID_autotune_start() {
-	SERIAL_ECHOLN("PID Autotune start");
+inline void report_sd_list_filename(const char* prepend) {
+//	SERIAL_PROTOCOL(prepend);
+//	SERIAL_PROTOCOLLN(filename);
 }
 
-void report_PID_autotune_failed_temperature_too_high() {
-	SERIAL_PROTOCOLLNPGM("PID Autotune failed! Temperature too high");
+
+inline void report_sd_init_card_ok() {
+//	SERIAL_ECHO_START;
+//	SERIAL_ECHOLNPGM(MSG_SD_CARD_OK);
 }
 
-void report_PID_autotune_finished() {
-	SERIAL_PROTOCOLLNPGM(
-			"PID Autotune finished! Put the Kp, Ki and Kd constants into Configuration.h");
+inline void report_sd_init_card_failed() {
+//	SERIAL_ECHO_START;
+//	SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
 }
 
-void report_PID_autotune_failed_timeout() {
-	SERIAL_PROTOCOLLNPGM("PID Autotune failed! timeout");
+inline void report_sd_init_volume_failed() {
+//	SERIAL_ERROR_START;
+//	SERIAL_ERRORLNPGM(MSG_SD_VOL_INIT_FAIL);
 }
 
-void report_PID_autotune_failed_bad_extruder() {
-	SERIAL_ECHOLN("PID Autotune failed. Bad extruder number.");
+inline void report_sd_open_root_failed() {
+//	SERIAL_ERROR_START;
+//	SERIAL_ERRORLNPGM(MSG_SD_OPENROOT_FAIL);
 }
 
+inline void report_sd_subdir_name(char subdirname[13]) {
+//	SERIAL_ECHOLN( subdirname );
+}
+
+inline void report_sd_file_selected() {
+//	SERIAL_PROTOCOLLNPGM( MSG_SD_FILE_SELECTED );
+}
+
+inline void report_open_subdir_failed(char lfilename[13]) {
+//	SERIAL_ECHO_START;
+//	SERIAL_ECHOLN(MSG_SD_CANT_OPEN_SUBDIR);
+//	SERIAL_ECHOLN(lfilename);
+}
+
+inline void report_sd_open_file_failed(const char* fname, bool read) {
+	//HANDLE READ
+//	SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
+//	SERIAL_PROTOCOL(fname);
+//	SERIAL_PROTOCOLLNPGM(".");
+}
+
+inline void report_sd_open_subdir_file_failed(const char* fname) {
+//	SERIAL_PROTOCOLPGM(MSG_SD_OPEN_FILE_FAIL);
+//	SERIAL_PROTOCOL(fname);
+//	SERIAL_PROTOCOLLNPGM(".");
+}
+
+inline void report_sd_file_opened_for_reading(const char* fname) {
+//	SERIAL_PROTOCOLPGM( MSG_SD_FILE_OPENED );
+//	SERIAL_PROTOCOL( fname );
+//	SERIAL_PROTOCOLPGM( MSG_SD_SIZE );
+//	SERIAL_PROTOCOLLN( filesize );
+}
+
+inline void report_sd_file_opened_for_writing(const char* name) {
+//	SERIAL_PROTOCOLPGM(MSG_SD_WRITE_TO_FILE);
+//	SERIAL_PROTOCOLLN(name);
+}
+
+inline void report_sd_file_removed(const char* fname) {
+//	SERIAL_PROTOCOLPGM("File deleted:");
+//	SERIAL_PROTOCOL(fname);
+}
+
+inline void report_sd_remove_file_failed(const char* fname) {
+//	SERIAL_PROTOCOLPGM( "Deletion failed, File: " );
+//	SERIAL_PROTOCOL( fname );
+//	SERIAL_PROTOCOLLNPGM(".");
+}
+
+
+inline void report_sd_card_error() {
+//	SERIAL_PROTOCOLPGM("Card error:");
+//	SERIAL_PROTOCOLLN(card.errorCode());
+}
+
+inline void report_sd_printing_file_status( uint32_t sdpos, uint32_t filesize ) {
+//	SERIAL_PROTOCOLPGM(MSG_SD_PRINTING_BYTE);
+//	SERIAL_PROTOCOL(sdpos);
+//	SERIAL_PROTOCOLPGM("/");
+//	SERIAL_PROTOCOLLN(filesize);
+}
+
+inline void report_sd_not_printing() {
+//	SERIAL_PROTOCOLLNPGM(MSG_SD_NOT_PRINTING);
+}
+
+
+inline void report_error_write_to_file() {
+//	SERIAL_ERROR_START;
+//	SERIAL_ERRORLNPGM( MSG_SD_ERR_WRITE_TO_FILE);
+}
+
+inline void report_cant_enter_subdir(const char* relpath) {
+//	SERIAL_ECHO_START;
+//	SERIAL_ECHOPGM(MSG_SD_CANT_ENTER_SUBDIR);
+//	SERIAL_ECHOLN(relpath);
+}
+
+
+
+
+inline void report_PID_autotune_start() {
+//	SERIAL_ECHOLN("PID Autotune start");
+}
+
+inline void report_PID_autotune_failed_temperature_too_high() {
+//	SERIAL_PROTOCOLLNPGM("PID Autotune failed! Temperature too high");
+}
+
+inline void report_PID_autotune_finished() {
+//	SERIAL_PROTOCOLLNPGM("PID Autotune finished! Put the Kp, Ki and Kd constants into Configuration.h");
+}
+
+inline void report_PID_autotune_failed_timeout() {
+//	SERIAL_PROTOCOLLNPGM("PID Autotune failed! timeout");
+}
+
+inline void report_PID_autotune_failed_bad_extruder() {
+//	SERIAL_ECHOLN("PID Autotune failed. Bad extruder number.");
+}
+
+inline void report_PID_autotune_temp_and_power(int extruder, int power, float input) {
+//	if (extruder < 0) {
+//		SERIAL_PROTOCOLPGM("ok B:");
+//	} else {
+//		SERIAL_PROTOCOLPGM("ok T:");
+//	}
+//	SERIAL_PROTOCOL( input );
+//	SERIAL_PROTOCOLPGM(" @:");
+//	SERIAL_PROTOCOLLN(power);
+}
+
+inline void report_PID_autotune_current_parameters(float Ku, float Tu, float Kp, float Ki, float Kd) {
+//	SERIAL_PROTOCOLPGM(" Ku: ");
+//	SERIAL_PROTOCOL(Ku);
+//	SERIAL_PROTOCOLPGM(" Tu: ");
+//	SERIAL_PROTOCOLLN(Tu);
+//	SERIAL_PROTOCOLLNPGM(" Clasic PID ");
+//	SERIAL_PROTOCOLPGM(" Kp: ");
+//	SERIAL_PROTOCOLLN(Kp);
+//	SERIAL_PROTOCOLPGM(" Ki: ");
+//	SERIAL_PROTOCOLLN(Ki);
+//	SERIAL_PROTOCOLPGM(" Kd: ");
+//	SERIAL_PROTOCOLLN(Kd);
+}
+
+inline void report_PID_autotune_current_status(long bias, long d, float min, float max) {
+//	SERIAL_PROTOCOLPGM(" bias: ");
+//	SERIAL_PROTOCOL(bias);
+//	SERIAL_PROTOCOLPGM(" d: ");
+//	SERIAL_PROTOCOL(d);
+//	SERIAL_PROTOCOLPGM(" min: ");
+//	SERIAL_PROTOCOL(min);
+//	SERIAL_PROTOCOLPGM(" max: ");
+//	SERIAL_PROTOCOLLN(max);
+}
 
 
 #endif /* PRINTER_TO_REMOTE_H_ */

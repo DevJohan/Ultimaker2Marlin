@@ -4,6 +4,7 @@
 #include "ultralcd.h"
 #include "UltiLCD2.h"
 #include "ConfigurationStore.h"
+#include "../CommunicationsBridge/printer_to_remote.h"
 
 void _EEPROM_writeData(int &pos, uint8_t* value, uint8_t size)
 {

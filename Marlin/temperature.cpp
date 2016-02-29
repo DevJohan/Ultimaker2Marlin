@@ -39,6 +39,7 @@
 #include "fan_driver.h"
 #include "Sd2Card.h"
 #include "i2c_fiset_driver.h"
+#include "../CommunicationsBridge/printer_to_remote.h"
 
 //===========================================================================
 //=============================public variables============================
@@ -243,23 +244,15 @@ void PID_autotune(float temp, int extruder, int ncycles)
             if(bias > (extruder<0?(MAX_BED_POWER):(PID_MAX))/2) d = (extruder<0?(MAX_BED_POWER):(PID_MAX)) - 1 - bias;
             else d = bias;
 
-            SERIAL_PROTOCOLPGM(" bias: "); SERIAL_PROTOCOL(bias);
-            SERIAL_PROTOCOLPGM(" d: "); SERIAL_PROTOCOL(d);
-            SERIAL_PROTOCOLPGM(" min: "); SERIAL_PROTOCOL(min);
-            SERIAL_PROTOCOLPGM(" max: "); SERIAL_PROTOCOLLN(max);
-            if(cycles > 2) {
+            report_PID_autotune_current_status(bias, d, min, max);
+            if (cycles > 2) {
               Ku = (4.0*d)/(3.14159*(max-min)/2.0);
               Tu = ((float)(t_low + t_high)/1000.0);
-              SERIAL_PROTOCOLPGM(" Ku: "); SERIAL_PROTOCOL(Ku);
-              SERIAL_PROTOCOLPGM(" Tu: "); SERIAL_PROTOCOLLN(Tu);
               Kp = 0.6*Ku;
               Ki = 2*Kp/Tu;
               Kd = Kp*Tu/8;
-              SERIAL_PROTOCOLLNPGM(" Clasic PID ");
-              SERIAL_PROTOCOLPGM(" Kp: "); SERIAL_PROTOCOLLN(Kp);
-              SERIAL_PROTOCOLPGM(" Ki: "); SERIAL_PROTOCOLLN(Ki);
-              SERIAL_PROTOCOLPGM(" Kd: "); SERIAL_PROTOCOLLN(Kd);
-              /*
+              report_PID_autotune_current_parameters(Ku, Tu, Kp, Ki, Kd);
+			/*
               Kp = 0.33*Ku;
               Ki = Kp/Tu;
               Kd = Kp*Tu/3;
@@ -287,23 +280,11 @@ void PID_autotune(float temp, int extruder, int ncycles)
       }
     }
     if(input > (temp + 20)) {
-			report_PID_autotune_failed();
+			report_PID_autotune_failed_temperature_too_high();
       return;
     }
     if(millis() - temp_millis > 2000) {
-      int p;
-      if (extruder<0){
-        p=soft_pwm_bed;
-        SERIAL_PROTOCOLPGM("ok B:");
-      }else{
-        p=soft_pwm[extruder];
-        SERIAL_PROTOCOLPGM("ok T:");
-      }
-
-      SERIAL_PROTOCOL(input);
-      SERIAL_PROTOCOLPGM(" @:");
-      SERIAL_PROTOCOLLN(p);
-
+    	report_PID_autotune_temp_and_power(extruder, extruder < 0 ? soft_pwm_bed : soft_pwm[extruder], input);
       temp_millis = millis();
     }
     if(((millis() - t1) + (millis() - t2)) > (10L*60L*1000L*2L)) {
@@ -646,6 +627,8 @@ void manage_heater()
 }
 
 #define PGM_RD_W(x)   (short)pgm_read_word(&x)
+
+
 // Derived from RepRap FiveD extruder::getTemperature()
 // For hot end temperature measurement.
 static float analog2temp(int raw, uint8_t e) {
@@ -655,9 +638,7 @@ static float analog2temp(int raw, uint8_t e) {
   if(e >= EXTRUDERS)
 #endif
   {
-      SERIAL_ERROR_START;
-      SERIAL_ERROR((int)e);
-      SERIAL_ERRORLNPGM(" - Invalid extruder number !");
+		report_read_wrong_extruder(e);
       kill();
   }
   #ifdef HEATER_0_USES_MAX6675
@@ -996,12 +977,11 @@ void disable_heater()
   #endif
 }
 
+
 void max_temp_error(uint8_t e) {
   disable_heater();
   if(IsStopped() == false) {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLN((int)e);
-    SERIAL_ERRORLNPGM(": Extruder switched off. MAXTEMP triggered !");
+		report_error_maxtemp_triggered(e);
     LCD_ALERTMESSAGEPGM("Err: MAXTEMP");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
@@ -1012,9 +992,7 @@ void max_temp_error(uint8_t e) {
 void min_temp_error(uint8_t e) {
   disable_heater();
   if(IsStopped() == false) {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLN((int)e);
-    SERIAL_ERRORLNPGM(": Extruder switched off. MINTEMP triggered !");
+		report_error_mintemp_triggered(e);
     LCD_ALERTMESSAGEPGM("Err: MINTEMP");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
@@ -1027,8 +1005,7 @@ void bed_max_temp_error(void) {
   WRITE(HEATER_BED_PIN, 0);
 #endif
   if(IsStopped() == false) {
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLNPGM("Temperature heated bed switched off. MAXTEMP triggered !!");
+		report_error_maxtemp_bed_triggered();
     LCD_ALERTMESSAGEPGM("Err: MAXTEMP BED");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
