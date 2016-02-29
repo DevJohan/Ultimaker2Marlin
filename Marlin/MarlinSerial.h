@@ -95,6 +95,14 @@ struct tx_ring_buffer
   extern tx_ring_buffer tx_buffer;
 #endif
 
+  template<typename... args>
+  struct send_impl;
+  template<typename arg_t>
+  void send_type(arg_t data);
+  template<typename arg_t,size_t data_pos,size_t data_size>
+  struct send_type_default_impl;
+
+
 class MarlinBinarySerial //: public Stream
 {
 
@@ -164,11 +172,15 @@ class MarlinBinarySerial //: public Stream
 
   public:
 
-    template<printer_message message_type, typename... args>
-    void send( args... );
+    template<printer_message message_type, typename... arg_ts>
+    void send( arg_ts... args){
+    	send_impl<printer_message,arg_ts...>::send(*this,message_type, args...);
+    }
 
-    template<printer_message message_type, sdcard_messages sub_type, typename... args>
-    void send_sd_message( args... );
+    template<printer_message message_type, typename sub_t, sub_t sub_message, typename... arg_ts>
+    void send_sub_message( arg_ts... args ){
+    	send_impl<printer_message,sub_t,arg_ts...>::send(*this,message_type,sub_message, args...);
+    }
 
 //    FORCE_INLINE void write(const char *str)
 //    {
@@ -183,6 +195,40 @@ class MarlinBinarySerial //: public Stream
 //        write(*buffer++);
 //    }
 
+};
+
+
+template<typename arg_t, size_t data_pos, size_t data_size>
+struct send_type_default_impl{
+	static void send(MarlinBinarySerial& serial_port, arg_t data){
+		serial_port.write(reinterpret_cast<const uint8_t*>(&data)[data_pos]);
+		send_type_default_impl<arg_t,data_pos+1,data_size>::send(serial_port,data);
+	}
+};
+template<typename arg_t,size_t data_size>
+struct send_type_default_impl<arg_t,data_size,data_size>{
+	static void send(MarlinBinarySerial& serial_port, arg_t data){}
+};
+
+template<typename arg_t>
+void send_type(MarlinBinarySerial& serial_port, arg_t data){
+	send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
+}
+
+
+template<typename arg_t, typename... rest_t>
+struct send_impl<arg_t,rest_t...>{
+	static void send(MarlinBinarySerial& serial_port, arg_t arg, rest_t... rest_arg){
+		send_type(serial_port, arg);
+		send_impl<rest_t...>::send(serial_port, rest_arg...);
+	}
+};
+
+template<typename arg_t>
+struct send_impl<arg_t>{
+	static void send(MarlinBinarySerial& serial_port, arg_t arg){
+		send_type(serial_port, arg);
+	}
 };
 
 extern MarlinBinarySerial MSerial;

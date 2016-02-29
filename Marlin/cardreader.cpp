@@ -82,7 +82,7 @@ void  CardReader::lsDive(const char *prepend,SdFile parent)
       {
         if(lsAction==LS_SerialPrint)
         {
-        	report_subdir_open_failed(lfilename);
+        	report_open_subdir_failed(lfilename);
         }
       }
       lsDive(path,dir);

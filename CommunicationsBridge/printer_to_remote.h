@@ -740,9 +740,14 @@ inline std::ostream& remote_report_fiset_full_data( std::ostream& os, int16_t da
 }
 
 
+template <sdcard_messages sd_message,typename... arg_ts>
+inline void send_sd_message(arg_ts... args){
+	MSerial.send_sub_message<printer_message::SD_CARD_DATA,sdcard_messages,sd_message>(args...);
+}
+
 
 inline void serial_sd_card_begin_file_list() {
-	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::BEGIN_FILE_LIST>();
+	send_sd_message<sdcard_messages::BEGIN_FILE_LIST>();
 }
 
 inline std::ostream& remote_serial_sd_card_begin_file_list( std::ostream& os ) {
@@ -750,7 +755,7 @@ inline std::ostream& remote_serial_sd_card_begin_file_list( std::ostream& os ) {
 }
 
 inline void serial_sd_card_end_file_list() {
-	MSerial.send_sd_message<printer_message::SD_CARD_DATA,sdcard_messages::END_FILE_LIST>();
+	send_sd_message<sdcard_messages::END_FILE_LIST>();
 }
 
 inline std::ostream& remote_serial_sd_card_end_file_list( std::ostream& os ) {

@@ -77,9 +77,6 @@ public:
     }
   }
 
-	void report_subdir_open_failed(char lfilename[13]);
-	void report_sd_list_filename(const char* prepend);
-
 public:
   bool saving;
   bool logging;
