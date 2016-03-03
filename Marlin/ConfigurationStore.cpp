@@ -107,10 +107,17 @@ void Config_StoreSettings()
 
 void Config_PrintSettings()
 {  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
+	unsigned long maupss[NUM_AXIS];
+	for(uint8_t i = 0;i<(NUM_AXIS);i++)
+		maupss[i] = max_acceleration_units_per_sq_second[i];
+	sized_array<float> a; a.data_size = (NUM_AXIS); a.data = axis_steps_per_unit;
+	sized_array<float> b; b.data_size = (NUM_AXIS); b.data = max_feedrate;
+	sized_array<unsigned long> c; c.data_size = (NUM_AXIS); c.data = maupss;
+	sized_array<float> d; d.data_size = (NUM_AXIS); d.data = add_homeing;
 	serial_com<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>::send(
-			axis_steps_per_unit,
-			max_feedrate,
-			max_acceleration_units_per_sq_second,
+			a,
+			b,
+			c,
 			acceleration,
 			retract_acceleration,
 			minimumfeedrate,
@@ -119,13 +126,12 @@ void Config_PrintSettings()
 			max_xy_jerk,
 			max_z_jerk,
 			max_e_jerk,
-			add_homeing,
+			d,
 			Kp,
 			unscalePID_i(Ki),
 			unscalePID_d(Kd)
 	);
-#ifdef PIDTEMP
-#endif
+
 }
 #endif
 

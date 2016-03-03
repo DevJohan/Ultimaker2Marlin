@@ -68,7 +68,6 @@ const char echomagic[] ="echo:";
 template <printer_message message>
 struct serial_com{};
 
-
 template <printer_message message>
 struct serial_remote{};
 
@@ -203,13 +202,12 @@ struct serial_remote<printer_message::REPORT_TOO_LONG_EXTRUSION_PREVENTED>{
 };
 
 
-
 template <>
 struct serial_com<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 	static void send(
-			float axis_steps_per_unit[],
-			float max_feedrate[],
-			unsigned long max_acceleration_units_per_sq_second[],
+			sized_array<float> axis_step_per_unit,
+			sized_array<float> max_feedrate,
+			sized_array<unsigned long> max_acceleration_units_per_sq_second,
 			float acceleration,
 			float retract_acceleration,
 			float minimumfeedrate,
@@ -218,14 +216,14 @@ struct serial_com<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 			float max_xy_jerk,
 			float max_z_jerk,
 			float max_e_jerk,
-			float add_homeing[],
+			sized_array<float> add_homeing,
 			float Kp,
 			float unscalePID_i,
 			float unscalePID_d
 	) {
 		MSerial.send<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>(
-				axis_steps_per_unit,
-				max_feedrate,
+				/*axis_step_per_unit,
+				max_feedrate,*/
 				max_acceleration_units_per_sq_second,
 				acceleration,
 				retract_acceleration,
@@ -235,19 +233,20 @@ struct serial_com<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 				max_xy_jerk,
 				max_z_jerk,
 				max_e_jerk,
-				add_homeing,
+				/*add_homeing,*/
 				Kp,
 				unscalePID_i,
 				unscalePID_d );
 	}
 };
 
+
 template <>
 struct serial_remote<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 	static std::ostream& handle_receive( std::ostream& os,
-			float axis_steps_per_unit[],
-			float max_feedrate[],
-			unsigned long max_acceleration_units_per_sq_second[],
+			sized_array<float> axis_steps_per_unit,
+			sized_array<float> max_feedrate,
+			sized_array<unsigned long> max_acceleration_units_per_sq_second,
 			float acceleration,
 			float retract_acceleration,
 			float minimumfeedrate,
@@ -256,27 +255,27 @@ struct serial_remote<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 			float max_xy_jerk,
 			float max_z_jerk,
 			float max_e_jerk,
-			float add_homeing[],
+			sized_array<float> add_homeing,
 			float Kp,
 			float unscalePID_i,
 			float unscalePID_d
 	) {
 		// Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
 		os << "Steps per unit:" << "\n";
-		os <<   "  M92 X" << axis_steps_per_unit[0] <<
-				" Y" << axis_steps_per_unit[1] <<
-				" Z" << axis_steps_per_unit[2] <<
-				" E" << axis_steps_per_unit[3] << "\n";
+		os <<   "  M92 X" << axis_steps_per_unit.data[0] <<
+				" Y" << axis_steps_per_unit.data[1] <<
+				" Z" << axis_steps_per_unit.data[2] <<
+				" E" << axis_steps_per_unit.data[3] << "\n";
 		os << "Maximum feedrates (mm/s):\n";
-		os << "  M203 X" << max_feedrate[0] <<
-				" Y" << max_feedrate[1] <<
-				" Z" << max_feedrate[2] <<
-				" E" << max_feedrate[3] << "\n";
+		os << "  M203 X" << max_feedrate.data[0] <<
+				" Y" << max_feedrate.data[1] <<
+				" Z" << max_feedrate.data[2] <<
+				" E" << max_feedrate.data[3] << "\n";
 		os << "Maximum Acceleration (mm/s2):\n";
-		os << "  M201 X" << max_acceleration_units_per_sq_second[0] <<
-				" Y" << max_acceleration_units_per_sq_second[1] <<
-				" Z" << max_acceleration_units_per_sq_second[2] <<
-				" E" << max_acceleration_units_per_sq_second[3] << "\n";
+		os << "  M201 X" << max_acceleration_units_per_sq_second.data[0] <<
+				" Y" << max_acceleration_units_per_sq_second.data[1] <<
+				" Z" << max_acceleration_units_per_sq_second.data[2] <<
+				" E" << max_acceleration_units_per_sq_second.data[3] << "\n";
 
 		os << "Acceleration: S=acceleration, T=retract acceleration\n";
 		os << "  M204 S" <<  acceleration <<
@@ -291,9 +290,9 @@ struct serial_remote<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>{
 				" E" << max_e_jerk << "\n";
 
 		os << "Home offset (mm):\n";
-		os << "  M206 X" << add_homeing[0] <<
-				" Y" << add_homeing[1]<<
-				" Z" << add_homeing[2]<< "\n";
+		os << "  M206 X" << add_homeing.data[0] <<
+				" Y" << add_homeing.data[1]<<
+				" Z" << add_homeing.data[2]<< "\n";
 
 		os << "PID settings:\n";
 		os << "   M301 P" << Kp <<

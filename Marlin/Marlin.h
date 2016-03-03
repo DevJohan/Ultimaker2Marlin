@@ -122,7 +122,7 @@ void manage_inactivity();
 #endif
 
 
-enum class Axes: uint8_t { X, Y, Z, E};
+enum class Axes: uint8_t { X, Y, Z, E, AXES_COUNT};
 
 constexpr uint8_t to_index(Axes axis){
 	return static_cast<uint8_t>(axis);
@@ -134,6 +134,7 @@ static_assert(to_index(Axes::X) == 0u, "Axes::X value not as expected");
 static_assert(to_index(Axes::Y) == 1u, "Axes::Y value not as expected");
 static_assert(to_index(Axes::Z) == 2u, "Axes::Z value not as expected");
 static_assert(to_index(Axes::E) == 3u, "Axes::E value not as expected");
+static_assert(to_index(Axes::AXES_COUNT) == (NUM_AXIS), "AXES_COUNT should equal NUM_AXIS");
 
 void FlushSerialRequestResend();
 void ClearToSend();

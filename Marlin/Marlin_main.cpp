@@ -2123,8 +2123,8 @@ void process_commands()
     #ifdef FILAMENTCHANGEENABLE
     case 600: //Pause for filament change X[pos] Y[pos] Z[relative lift] E[initial retract] L[later retract distance for removal]
     {
-        float target[4];
-        float lastpos[4];
+        float target[NUM_AXIS];
+        float lastpos[NUM_AXIS];
         target[to_index(Axes::X)]=current_position[to_index(Axes::X)];
         target[to_index(Axes::Y)]=current_position[to_index(Axes::Y)];
         target[to_index(Axes::Z)]=current_position[to_index(Axes::Z)];
@@ -2250,8 +2250,8 @@ void process_commands()
     case 601: //Pause in UltiLCD2, X[pos] Y[pos] Z[relative lift] L[later retract distance]
     {
         st_synchronize();
-        float target[4];
-        float lastpos[4];
+        float target[NUM_AXIS];
+        float lastpos[NUM_AXIS];
         target[to_index(Axes::X)]=current_position[to_index(Axes::X)];
         target[to_index(Axes::Y)]=current_position[to_index(Axes::Y)];
         target[to_index(Axes::Z)]=current_position[to_index(Axes::Z)];
@@ -2586,7 +2586,7 @@ void ClearToSend()
 
 void get_coordinates()
 {
-    bool seen[4]={false,false,false,false};
+    bool seen[NUM_AXIS]={false,false,false,false};
     for(int8_t i=0; i < NUM_AXIS; i++)
     {
         if(code_seen(axis_codes[i]))

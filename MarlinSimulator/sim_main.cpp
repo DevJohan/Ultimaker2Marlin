@@ -195,7 +195,7 @@ public:
         drawRect(_x + X_MAX_LENGTH / PRINTER_DOWN_SCALE + 2, _y, 1, Z_MAX_LENGTH / PRINTER_DOWN_SCALE + 1, 0x202020);
 
         float pos[3];
-        float stepsPerUnit[4] = DEFAULT_AXIS_STEPS_PER_UNIT;
+        float stepsPerUnit[NUM_AXIS] = DEFAULT_AXIS_STEPS_PER_UNIT;
         pos[0] = x->getPosition() / stepsPerUnit[X_AXIS];
         pos[1] = Y_MAX_POS - y->getPosition() / stepsPerUnit[Y_AXIS];
         pos[2] = z->getPosition() / stepsPerUnit[Z_AXIS];
@@ -223,7 +223,7 @@ void sim_setup_main()
     stepperSim* zStep = new stepperSim(arduinoIO, Z_ENABLE_PIN, Z_STEP_PIN, Z_DIR_PIN, INVERT_Z_DIR);
     stepperSim* e0Step = new stepperSim(arduinoIO, E0_ENABLE_PIN, E0_STEP_PIN, E0_DIR_PIN, INVERT_E0_DIR);
     stepperSim* e1Step = new stepperSim(arduinoIO, E1_ENABLE_PIN, E1_STEP_PIN, E1_DIR_PIN, INVERT_E1_DIR);
-    float stepsPerUnit[4] = DEFAULT_AXIS_STEPS_PER_UNIT;
+    float stepsPerUnit[NUM_AXIS] = DEFAULT_AXIS_STEPS_PER_UNIT;
     xStep->setRange(0, X_MAX_POS * stepsPerUnit[X_AXIS]);
     yStep->setRange(0, Y_MAX_POS * stepsPerUnit[Y_AXIS]);
     zStep->setRange(0, Z_MAX_POS * stepsPerUnit[Z_AXIS]);
