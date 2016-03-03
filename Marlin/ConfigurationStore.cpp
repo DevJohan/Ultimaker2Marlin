@@ -97,7 +97,7 @@ void Config_StoreSettings()
   char ver2[4]=EEPROM_VERSION;
   i=EEPROM_OFFSET;
   EEPROM_WRITE_VAR(i,ver2); // validate data
-	report_settings_stored();
+	serial_com<printer_message::REPORT_SETTINGS_STORED>::send();
 }
 #endif //EEPROM_SETTINGS
 
@@ -107,7 +107,7 @@ void Config_StoreSettings()
 
 void Config_PrintSettings()
 {  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
-	report_current_printer_settings(
+	serial_com<printer_message::REPORT_CURRENT_PRINTER_SETTINGS>::send(
 			axis_steps_per_unit,
 			max_feedrate,
 			max_acceleration_units_per_sq_second,
@@ -190,7 +190,7 @@ void Config_RetrieveSettings()
 
 		// Call updatePID (similar to when we have processed M301)
 		updatePID();
-		report_settings_retrieved();
+		serial_com<printer_message::REPORT_SETTINGS_RETRIEVED>::send();
 	}
     else
     {
@@ -262,5 +262,5 @@ void Config_ResetDefault()
     retract_length = 4.5;
     retract_feedrate = 25 * 60;
 
-	report_factory_settings_restored();
+	serial_com<printer_message::REPORT_FACTORY_SETTINGS_RESTORED>::send();
 }

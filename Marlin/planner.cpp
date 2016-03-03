@@ -562,14 +562,14 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
     if(degHotend(extruder)<extrude_min_temp)
     {
       position[to_index(Axes::E)]=target[to_index(Axes::E)]; //behave as if the move really took place, but ignore E part
-			report_cold_extrusion_prevented();
+			serial_com<printer_message::REPORT_COLD_EXTRUSION_PREVENTED>::send();
     }
 
     #ifdef PREVENT_LENGTHY_EXTRUDE
     if(labs(target[to_index(Axes::E)]-position[to_index(Axes::E)])>axis_steps_per_unit[to_index(Axes::E)]*EXTRUDE_MAXLENGTH)
     {
       position[to_index(Axes::E)]=target[to_index(Axes::E)]; //behave as if the move really took place, but ignore E part
-			report_too_long_extrusion_prevented();
+			serial_com<printer_message::REPORT_TOO_LONG_EXTRUSION_PREVENTED>::send();
     }
     #endif
   }

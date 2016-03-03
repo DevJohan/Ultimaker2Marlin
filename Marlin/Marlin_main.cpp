@@ -328,7 +328,7 @@ void enquecommand(const char *cmd)
   {
     //this is dangerous if a mixing of serial and this happsens
     strcpy(&(cmdbuffer[bufindw][0]),cmd);
-    report_enqueing_command(cmdbuffer[bufindw]);
+    serial_com<printer_message::REPORT_ENQUEING_COMMAND>::send(cmdbuffer[bufindw]);
     bufindw = (bufindw + 1) % BUFSIZE;
     buflen += 1;
   }
@@ -340,7 +340,7 @@ void enquecommand_P(const char *cmd)
   {
     //this is dangerous if a mixing of serial and this happsens
     strcpy_P(&(cmdbuffer[bufindw][0]),cmd);
-    report_enqueing_command(cmdbuffer[bufindw]);
+    serial_com<printer_message::REPORT_ENQUEING_COMMAND>::send(cmdbuffer[bufindw]);
     bufindw= (bufindw + 1)%BUFSIZE;
     buflen += 1;
   }
@@ -429,7 +429,7 @@ void setup()
   MSerial.begin(BAUDRATE);
   // Check startup - does nothing if bootloader sets MCUSR to 0
   byte mcu = MCUSR;
-  report_startup_status(mcu);
+  serial_com<printer_message::REPORT_STARTUP_STATUS>::send(mcu);
   MCUSR=0;
 
   //Read ADC14, this is connected to the main power and helps in detecting which board we have
@@ -437,7 +437,7 @@ void setup()
   // Connected to 24V - 100k -|- 10k - GND = ADC ~447 ADC on Ultimaker 2.x board with 16 microsteps on the Z
   int main_board_power = analogRead(14);
 
-  report_firmware_information( freeMemory(), (int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
+  serial_com<printer_message::REPORT_FIRMWARE_INFORMATION>::send( freeMemory(), (int)sizeof(block_t)*BLOCK_BUFFER_SIZE);
 
   for(int8_t i = 0; i < BUFSIZE; i++)
   {
@@ -493,13 +493,13 @@ void loop()
           }
           else
           {
-        	  report_ok();
+        	  serial_com<printer_message::REPORT_OK>::send();
           }
         }
         else
         {
           card.closefile();
-          report_file_saved();
+          serial_com<printer_message::REPORT_FILE_SAVED>::send();
         }
       }
       else
@@ -545,7 +545,7 @@ void get_command()
 					strchr_pointer = strchr(cmdbuffer[bufindw], 'N');
 					gcode_N = (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10));
 					if(gcode_N != gcode_LastN+1 && (strstr_P(cmdbuffer[bufindw], PSTR("M110")) == NULL) ) {
-						report_error_in_line_number(gcode_LastN);//Serial.println(gcode_N);
+						serial_com<printer_message::REPORT_ERROR_IN_LINE_NUMBER>::send(gcode_LastN);//Serial.println(gcode_N);
 						FlushSerialRequestResend();
 						serial_count = 0;
 						return;
@@ -559,7 +559,7 @@ void get_command()
 						strchr_pointer = strchr(cmdbuffer[bufindw], '*');
 
 						if( (int)(strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)) != checksum) {
-							report_error_in_checksum(gcode_LastN);
+							serial_com<printer_message::REPORT_ERROR_IN_CHECKSUM>::send(gcode_LastN);
 							FlushSerialRequestResend();
 							serial_count = 0;
 							return;
@@ -568,7 +568,7 @@ void get_command()
 					}
 					else
 					{
-						report_missing_checksum(gcode_LastN);
+						serial_com<printer_message::REPORT_MISSING_CHECKSUM>::send(gcode_LastN);
 						FlushSerialRequestResend();
 						serial_count = 0;
 						return;
@@ -581,7 +581,7 @@ void get_command()
 				{
 					if((strchr(cmdbuffer[bufindw], '*') != NULL))
 					{
-						report_no_line_number_with_checksum(gcode_LastN);
+						serial_com<printer_message::REPORT_NO_LINE_NUMBER_WITH_CHECKSUM>::send(gcode_LastN);
 						serial_count = 0;
 						return;
 					}
@@ -598,10 +598,10 @@ void get_command()
 							if(card.saving)
 								break;
 #endif //SDSUPPORT
-							report_ok();
+							serial_com<printer_message::REPORT_OK>::send();
 						}
 						else {
-							report_printer_stopped();
+							serial_com<printer_message::REPORT_PRINTER_STOPPED>::send();
 							LCD_MESSAGEPGM(MSG_STOPPED);
 						}
 						break;
@@ -673,7 +673,7 @@ void get_command()
 				stoptime=millis();
 				char time[30];
 				unsigned long t=(stoptime-starttime)/1000;
-				report_file_printed(t);
+				serial_com<printer_message::REPORT_FILE_PRINTED>::send(t);
 				int hours, minutes;
 				minutes=(t/60)%60;
 				hours=t/60/60;
@@ -782,10 +782,10 @@ static void homeaxis( Axes axis ) {
             plan_buffer_line(destination[to_index(Axes::X)], destination[to_index(Axes::Y)], destination[to_index(Axes::Z)], destination[to_index(Axes::E)], feedrate/60, active_extruder);
             st_synchronize();
 
-            report_endstop_not_pressed_after_homing();
+            serial_com<printer_message::REPORT_ENDSTOP_NOT_PRESSED_AFTER_HOMING>::send();
             Stop(STOP_REASON_Z_ENDSTOP_BROKEN_ERROR);
         }else{
-        	report_endstop_not_pressed_after_homing();
+        	serial_com<printer_message::REPORT_ENDSTOP_NOT_PRESSED_AFTER_HOMING>::send();
             Stop(STOP_REASON_XY_ENDSTOP_BROKEN_ERROR);
         }
         return;
@@ -827,7 +827,7 @@ static void homeaxis( Axes axis ) {
     }
     if (endstop_pressed)
     {
-			report_error_endstop_still_pressed();
+			serial_com<printer_message::REPORT_ERROR_ENDSTOP_STILL_PRESSED>::send();
 			if (axis == Axes::Z)
             Stop(STOP_REASON_Z_ENDSTOP_STUCK_ERROR);
         else
@@ -1260,7 +1260,7 @@ void process_commands()
           planner_bed_leveling_factor[to_index(Axes::X)] = (height_3 - height_2) / (CONFIG_BED_LEVELING_POINT3_X - CONFIG_BED_LEVELING_POINT2_X);
           planner_bed_leveling_factor[to_index(Axes::Y)] = ((height_2 + height_3) / 2.0 - height_1) / (CONFIG_BED_LEVELING_POINT3_Y - CONFIG_BED_LEVELING_POINT1_Y);
           
-			report_bed_leveling_probe_sequence(height_1, height_2, height_3,
+			serial_com<printer_message::REPORT_BED_LEVELING_PROBE_SEQUENCE>::send(height_1, height_2, height_3,
 					planner_bed_leveling_factor[to_index(Axes::X)],
 					planner_bed_leveling_factor[to_index(Axes::Y)]);
           //Correct the Z position. So Z0 is always on top of the bed. We are currently positioned at point 3, on top of the bed.
@@ -1271,7 +1271,7 @@ void process_commands()
     case 30: // G30 Probe Z at current position and report result.
       destination[to_index(Axes::Z)] = probeWithCapacitiveSensor();
       plan_buffer_line(destination[to_index(Axes::X)], destination[to_index(Axes::Y)], destination[to_index(Axes::Z)], destination[to_index(Axes::E)], homing_feedrate[to_index(Axes::Z)], active_extruder);
-      report_bed_leveling_probe_point(destination[to_index(Axes::Z)]);
+      serial_com<printer_message::REPORT_BED_LEVELING_PROBE_POINT>::send(destination[to_index(Axes::Z)]);
       break;
 #endif
     case 90: // G90
@@ -1447,7 +1447,7 @@ void process_commands()
     	stoptime=millis();
     	char time[30];
     	unsigned long t=(stoptime-starttime)/1000;
-    	report_time_elapsed(t);
+    	serial_com<printer_message::REPORT_TIME_ELAPSED>::send(t);
     	int sec,min;
     	min=t/60;
     	sec=t%60;
@@ -1512,7 +1512,7 @@ void process_commands()
     	const float deg_bed = 0;
     	const float target_bed = 0;
 #endif // TEMP_BED_PIN
-    	report_temperature_and_power(
+    	serial_com<printer_message::REPORT_TEMPERATURE_AND_POWER>::send(
     			tmp_extruder,
 				deg_hotend,
 				target_hotend,
@@ -1569,7 +1569,7 @@ void process_commands()
         	  const char residency_char = 0;
         	  const int16_t residency_time = 0;
 #endif
-        	  report_wait_for_temperature( tmp_extruder, degHotend(tmp_extruder), residency_char, residency_time );
+        	  serial_com<printer_message::REPORT_WAIT_FOR_TEMPERATURE>::send( tmp_extruder, degHotend(tmp_extruder), residency_char, residency_time );
         	  codenum = millis();
           }
           manage_heater();
@@ -1602,7 +1602,7 @@ void process_commands()
         {
           if(( millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
-            report_wait_for_temperature_bed(active_extruder, degHotend(active_extruder), degBed() );
+            serial_com<printer_message::REPORT_WAIT_FOR_TEMPERATURE_BED>::send(active_extruder, degHotend(active_extruder), degBed() );
             codenum = millis();
           }
           manage_heater();
@@ -1741,7 +1741,7 @@ void process_commands()
       }
       break;
     case 115: // M115
-      report_firmware_capabilities_string( MSG_FIRMWARE_CAPABILITIES );
+      serial_com<printer_message::REPORT_FIRMWARE_CAPABILITIES_STRING>::send( MSG_FIRMWARE_CAPABILITIES );
       break;
     case 117: // M117 display message
       starpos = (strchr(strchr_pointer + 5,'*'));
@@ -1750,7 +1750,7 @@ void process_commands()
       lcd_setstatus(strchr_pointer + 5);
       break;
     case 114: // M114
-    	report_current_position(
+    	serial_com<printer_message::REPORT_CURRENT_POSITION>::send(
     			current_position[to_index(Axes::X)],
 				current_position[to_index(Axes::Y)],
 				current_position[to_index(Axes::Z)],
@@ -1800,7 +1800,7 @@ void process_commands()
 #else
 		endstop_status endstop_Z_max =  endstop_status::UNUSED;
 #endif
-    	report_endstop_status( endstop_X_min,endstop_X_max,endstop_Y_min,endstop_Y_max, endstop_Z_min, endstop_Z_max);
+    	serial_com<printer_message::REPORT_ENDSTOP_STATUS>::send( endstop_X_min,endstop_X_max,endstop_Y_min,endstop_Y_max, endstop_Z_min, endstop_Z_max);
     }
     break;
       //TODO: update for all axis, use for loop
@@ -1886,7 +1886,7 @@ void process_commands()
           case 0: autoretract_enabled=false;retracted=false;break;
           case 1: autoretract_enabled=true;retracted=false;break;
           default:
-        	  report_unknown_command( cmdbuffer[bufindr] );
+        	  serial_com<printer_message::REPORT_UNKNOWN_COMMAND>::send( cmdbuffer[bufindr] );
         }
       }
 
@@ -2006,7 +2006,7 @@ void process_commands()
 #else
         float kc = 0;
 #endif
-        report_PID_extruder_parameters(Kp, unscalePID_i(Ki), unscalePID_d(Kd), kc);
+        serial_com<printer_message::REPORT_PID_EXTRUDER_PARAMETERS>::send(Kp, unscalePID_i(Ki), unscalePID_d(Kd), kc);
       }
       break;
     #endif //PIDTEMP
@@ -2084,7 +2084,7 @@ void process_commands()
             lcd_update();
             lifetime_stats_tick();
         }
-        report_single_cap_probe_reading(value);
+        serial_com<printer_message::REPORT_SINGLE_CAP_PROBE_VALUE>::send(value);
       }
     break;
 #endif//ENABLE_BED_LEVELING_PROBE
@@ -2506,7 +2506,7 @@ void process_commands()
         break;
     case 10010://M10010 - Request LCD screen button info (R:[rotation difference compared to previous request] B:[button down])
         {
-			report_lcd_button_info(lcd_lib_encoder_pos, lcd_lib_button_down);
+			serial_com<printer_message::REPORT_LCD_BUTTON_INFO>::send(lcd_lib_encoder_pos, lcd_lib_button_down);
 			lcd_lib_encoder_pos = 0;
             return;
         }
@@ -2519,7 +2519,7 @@ void process_commands()
   {
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
-    	report_invalid_extruder_specified(tmp_extruder);
+    	serial_com<printer_message::REPORT_INVALID_EXTRUDER_SPECIFIED>::send(tmp_extruder);
 		}
     else {
       boolean make_move = false;
@@ -2550,7 +2550,7 @@ void process_commands()
         }
       }
       #endif
-			report_active_extruder( active_extruder );
+			serial_com<printer_message::REPORT_ACTIVE_EXTRUDER>::send( active_extruder );
 		}
   }
   else if (strcmp_P(cmdbuffer[bufindr], PSTR("Electronics_test")) == 0)
@@ -2559,7 +2559,7 @@ void process_commands()
   }
   else
   {
-		report_unknown_command(cmdbuffer[bufindr]);
+		serial_com<printer_message::REPORT_UNKNOWN_COMMAND>::send(cmdbuffer[bufindr]);
 	}
   printing_state = PRINT_STATE::NORMAL;
 
@@ -2569,7 +2569,7 @@ void process_commands()
 void FlushSerialRequestResend()
 {
   //char cmdbuffer[bufindr][100]="Resend:";
-	issue_resend_request(gcode_LastN);
+	serial_com<printer_message::ISSUE_RESEND_REQUEST>::send(gcode_LastN);
 	ClearToSend();
 }
 
@@ -2581,7 +2581,7 @@ void ClearToSend()
   if(fromsd[bufindr])
     return;
   #endif //SDSUPPORT
-	report_ok();
+	serial_com<printer_message::REPORT_OK>::send();
 }
 
 void get_coordinates()
@@ -2879,7 +2879,7 @@ void kill()
 #if defined(PS_ON_PIN) && PS_ON_PIN > -1
   pinMode(PS_ON_PIN,INPUT);
 #endif
-	report_printer_killed();
+	serial_com<printer_message::REPORT_PRINTER_KILLED>::send();
 	LCD_ALERTMESSAGEPGM(MSG_KILLED);
   suicide();
   while(1) { /* Intentionally left empty */ } // Wait for reset
@@ -2892,7 +2892,7 @@ void Stop(uint8_t reasonNr)
   if(Stopped == false) {
     Stopped = reasonNr;
     Stopped_gcode_LastN = gcode_LastN; // Save last g_code for restart
-    report_printer_stopped();
+    serial_com<printer_message::REPORT_PRINTER_STOPPED>::send();
     LCD_MESSAGEPGM(MSG_STOPPED);
   }
 }
@@ -2976,7 +2976,7 @@ bool setTargetedHotend(int code){
   if(code_seen('T')) {
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
-    	report_wrong_extruder_specified(code,tmp_extruder);
+    	serial_com<printer_message::REPORT_WRONG_EXTRUDER_SPECIFIED>::send(code,tmp_extruder);
     	return true;
     }
   }

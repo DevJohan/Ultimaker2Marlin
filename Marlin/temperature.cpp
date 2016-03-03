@@ -638,7 +638,7 @@ static float analog2temp(int raw, uint8_t e) {
   if(e >= EXTRUDERS)
 #endif
   {
-		report_read_wrong_extruder(e);
+		serial_com<printer_message::REPORT_READ_WRONG_EXTRUDER>::send(e);
       kill();
   }
   #ifdef HEATER_0_USES_MAX6675
@@ -981,7 +981,7 @@ void disable_heater()
 void max_temp_error(uint8_t e) {
   disable_heater();
   if(IsStopped() == false) {
-		report_error_maxtemp_triggered(e);
+		serial_com<printer_message::REPORT_ERROR_MAXTEMP>::send(e);
     LCD_ALERTMESSAGEPGM("Err: MAXTEMP");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
@@ -992,7 +992,7 @@ void max_temp_error(uint8_t e) {
 void min_temp_error(uint8_t e) {
   disable_heater();
   if(IsStopped() == false) {
-		report_error_mintemp_triggered(e);
+		serial_com<printer_message::REPORT_ERROR_MINTEMP>::send(e);
     LCD_ALERTMESSAGEPGM("Err: MINTEMP");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
@@ -1005,7 +1005,7 @@ void bed_max_temp_error(void) {
   WRITE(HEATER_BED_PIN, 0);
 #endif
   if(IsStopped() == false) {
-		report_error_maxtemp_bed_triggered();
+		serial_com<printer_message::REPORT_ERROR_MAXTEMP_BED>::send();
     LCD_ALERTMESSAGEPGM("Err: MAXTEMP BED");
   }
   #ifndef BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE

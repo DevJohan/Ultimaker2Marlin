@@ -197,15 +197,15 @@ void checkHitEndstops()
 {
  if( endstop_x_hit || endstop_y_hit || endstop_z_hit) {
    if(endstop_x_hit) {
-	 report_endstop_hit(Axes::X, (float)endstops_trigsteps[to_index(Axes::X)]/axis_steps_per_unit[to_index(Axes::X)]);
+	 serial_com<printer_message::REPORT_ENDSTOP_HIT>::send(Axes::X, (float)endstops_trigsteps[to_index(Axes::X)]/axis_steps_per_unit[to_index(Axes::X)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "X");
    }
    if(endstop_y_hit) {
-     report_endstop_hit(Axes::Y, (float)endstops_trigsteps[to_index(Axes::Y)]/axis_steps_per_unit[to_index(Axes::Y)]);
+     serial_com<printer_message::REPORT_ENDSTOP_HIT>::send(Axes::Y, (float)endstops_trigsteps[to_index(Axes::Y)]/axis_steps_per_unit[to_index(Axes::Y)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Y");
    }
    if(endstop_z_hit) {
-     report_endstop_hit(Axes::Z, (float)endstops_trigsteps[to_index(Axes::Z)]/axis_steps_per_unit[to_index(Axes::Z)]);
+     serial_com<printer_message::REPORT_ENDSTOP_HIT>::send(Axes::Z, (float)endstops_trigsteps[to_index(Axes::Z)]/axis_steps_per_unit[to_index(Axes::Z)]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
    }
    endstop_x_hit=false;
@@ -301,7 +301,7 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
   }
 	if (timer < 100) {
 		timer = 100;
-		report_step_rate_too_high(step_rate);
+		serial_com<printer_message::REPORT_STEP_RATE_TOO_HIGH>::send(step_rate);
 	} //(20kHz this should never happen)
   return timer;
 }
@@ -1037,7 +1037,7 @@ void microstep_mode(uint8_t driver, uint8_t stepping_mode)
 
 void microstep_readings()
 {
-	report_microstep_settings(
+	serial_com<printer_message::REPORT_MICROSTEP_SETTINGS>::send(
 			digitalRead( X_MS1_PIN ), digitalRead( X_MS2_PIN ),
 			digitalRead( Y_MS1_PIN ), digitalRead( Y_MS2_PIN ),
 			digitalRead( Z_MS1_PIN ), digitalRead( Z_MS2_PIN ),
