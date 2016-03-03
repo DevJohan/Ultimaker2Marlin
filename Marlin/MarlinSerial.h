@@ -98,9 +98,15 @@ struct tx_ring_buffer
   template<typename... args>
   struct send_impl;
   template<typename arg_t>
-  void send_type(arg_t data);
+  struct send_type;
   template<typename arg_t,size_t data_pos,size_t data_size>
   struct send_type_default_impl;
+
+  template <typename arg_t>
+  struct sized_array{
+  	uint8_t data_size;
+  	arg_t* data;
+  };
 
 
 class MarlinBinarySerial //: public Stream
@@ -211,15 +217,43 @@ struct send_type_default_impl<arg_t,data_size,data_size>{
 };
 
 template<typename arg_t>
-void send_type(MarlinBinarySerial& serial_port, arg_t data){
-	send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
-}
+struct send_type{
+	static void send(MarlinBinarySerial& serial_port, arg_t data){
+		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
+	}};
 
+template<typename arg_t>
+struct send_type<arg_t*>{
+//	static_assert(false,"Can not send general pointer type");
+	static void send(MarlinBinarySerial& serial_port, arg_t* data){
+		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
+	}};
+
+//template<typename arg_t>
+//struct send_type<sized_array<arg_t>>{
+//	static void send(MarlinBinarySerial& serial_port, sized_array<arg_t> data){
+//		serial_port.write( static_cast<uint8_t>(data.data_size) );
+//		arg_t* d = data.data;
+//		for(uint8_t i = data.data_size;i!=0;--i){
+//			send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, *(d++));
+//		}
+//	}};
+
+template<>
+struct send_type<const char*>{
+	static void send(MarlinBinarySerial& serial_port, const char* data){
+		int data_len = strlen(data);
+		if(data_len < 255){
+			serial_port.write( static_cast<uint8_t>(data_len) );
+			for( uint8_t i=data_len; i != 0; --i )
+				serial_port.write( *data++ );
+		}
+	}};
 
 template<typename arg_t, typename... rest_t>
 struct send_impl<arg_t,rest_t...>{
 	static void send(MarlinBinarySerial& serial_port, arg_t arg, rest_t... rest_arg){
-		send_type(serial_port, arg);
+		send_type<arg_t>::send(serial_port, arg);
 		send_impl<rest_t...>::send(serial_port, rest_arg...);
 	}
 };
@@ -227,7 +261,7 @@ struct send_impl<arg_t,rest_t...>{
 template<typename arg_t>
 struct send_impl<arg_t>{
 	static void send(MarlinBinarySerial& serial_port, arg_t arg){
-		send_type(serial_port, arg);
+		send_type<arg_t>::send(serial_port, arg);
 	}
 };
 
