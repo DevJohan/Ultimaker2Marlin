@@ -59,7 +59,43 @@
 #define M_USARTx_UDRE_vect SERIAL_REGNAME(USART,SERIAL_PORT,_UDRE_vect)
 #define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
 
+#define SERIAL_PORT_INFO_TEMPLATE(port_nr) \
+template <> struct serial_port_info<port_nr>{ \
+	static FORCE_INLINE constexpr volatile uint8_t& ucsr_a(){ return SERIAL_REGNAME(UCSR,port_nr,A); }; \
+	static FORCE_INLINE constexpr volatile uint8_t& ucsr_b(){ return SERIAL_REGNAME(UCSR,port_nr,B); }; \
+	static constexpr uint8_t rxen = SERIAL_REGNAME(RXEN,port_nr,); \
+	static constexpr uint8_t txen = SERIAL_REGNAME(TXEN,port_nr,); \
+	static constexpr uint8_t rxcie = SERIAL_REGNAME(RXCIE,port_nr,); \
+	static constexpr uint8_t udrie = SERIAL_REGNAME(UDRIE,port_nr,); \
+	static constexpr uint8_t udre = SERIAL_REGNAME(UDRE,port_nr,); \
+	static FORCE_INLINE constexpr volatile uint8_t& udr(){ return SERIAL_REGNAME(UDR,port_nr,);} \
+	static FORCE_INLINE constexpr volatile uint8_t& ubrr_h(){ return SERIAL_REGNAME(UBRR,port_nr,H);} \
+	static FORCE_INLINE constexpr volatile uint8_t& ubrr_l(){ return SERIAL_REGNAME(UBRR,port_nr,L);} \
+	static constexpr uint8_t rxc = SERIAL_REGNAME(RXC,port_nr,); \
+	static constexpr uint8_t u2x = SERIAL_REGNAME(U2X,port_nr,); \
+};
 
+
+template <uint8_t port_number>
+struct serial_port_info;
+
+//The following expansions assume if (!defined(UBRR0H) || !defined(UDR0)) then UART_PRESENT(1-4) is not defined
+#if UART_PRESENT(0)
+SERIAL_PORT_INFO_TEMPLATE(0)
+#endif
+#if UART_PRESENT(1)
+SERIAL_PORT_INFO_TEMPLATE(1)
+#endif
+#if UART_PRESENT(2)
+SERIAL_PORT_INFO_TEMPLATE(2)
+#endif
+#if UART_PRESENT(3)
+SERIAL_PORT_INFO_TEMPLATE(3)
+#endif
+#if UART_PRESENT(4)
+SERIAL_PORT_INFO_TEMPLATE(4)
+#endif
+#undef SERIAL_PORT_INFO_TEMPLATE
 
 #define DEC 10
 #define HEX 16
@@ -95,8 +131,10 @@ struct tx_ring_buffer
   extern tx_ring_buffer tx_buffer;
 #endif
 
-  template<typename... args>
+  template<typename... arg_ts>
   struct send_impl;
+  template<typename... args>
+  struct send_arg_iterator;
   template<typename arg_t>
   struct send_type;
   template<typename arg_t,size_t data_pos,size_t data_size>
@@ -112,24 +150,25 @@ struct tx_ring_buffer
   	arg_t* data;
   };
 
+  static constexpr char command_magic = 0xC3;
 
 class MarlinBinarySerial //: public Stream
 {
 
   public:
     MarlinBinarySerial();
-    void begin(long);
-    void end();
-    int peek(void);
-    int read(void);
-    void flush(void);
+    static void begin(long);
+    static void end();
+    static int peek(void);
+    static int read(void);
+    static void flush(void);
 
-    FORCE_INLINE int available(void)
+    static FORCE_INLINE int available(void)
     {
       return (unsigned int)(RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) % RX_BUFFER_SIZE;
     }
 
-    FORCE_INLINE void write_blocking(){
+    static FORCE_INLINE void write_blocking(){
     	critical_section_guard lock;
     	if(tx_buffer.tail != tx_buffer.head){
     		while(!((M_UCSRxA) & (1 << M_UDREx)));
@@ -138,7 +177,7 @@ class MarlinBinarySerial //: public Stream
     	}
     }
 
-    FORCE_INLINE void write(uint8_t c)
+    static FORCE_INLINE void write(uint8_t c)
     {
     	int i = (unsigned int)(tx_buffer.head + 1) % TX_BUFFER_SIZE;
     	if( i == tx_buffer.tail )
@@ -148,7 +187,7 @@ class MarlinBinarySerial //: public Stream
     	sbi(M_UCSRxB, M_UDRIEx);
     }
 
-    FORCE_INLINE void checkTx(){
+    static FORCE_INLINE void checkTx(){
     	if(tx_buffer.tail != tx_buffer.head){
     		critical_section_guard lock;
     		if(((M_UCSRxA) & (1 << M_UDREx))){
@@ -159,7 +198,7 @@ class MarlinBinarySerial //: public Stream
     		cbi(M_UCSRxB, M_UDRIEx);
     }
 
-    FORCE_INLINE void checkRx(void)
+    static FORCE_INLINE void checkRx(void)
     {
       if((M_UCSRxA & (1<<M_RXCx)) != 0) {
         unsigned char c  =  M_UDRx;
@@ -177,106 +216,95 @@ class MarlinBinarySerial //: public Stream
     }
 
 
-    private:
-
-
   public:
 
     template<printer_message message_type, typename... arg_ts>
-    void send( arg_ts... args){
-    	send_impl<printer_message,arg_ts...>::send(*this,message_type, args...);
+    static void send( arg_ts... args){
+    	send_impl<printer_message,arg_ts...>::send( message_type, args...);
     }
 
     template<printer_message message_type, typename sub_t, sub_t sub_message, typename... arg_ts>
-    void send_sub_message( arg_ts... args ){
-    	send_impl<printer_message,sub_t,arg_ts...>::send(*this,message_type,sub_message, args...);
+    static void send_sub_message( arg_ts... args ){
+    	send<message_type>(sub_message, args...);
     }
 
-//    FORCE_INLINE void write(const char *str)
-//    {
-//      while (*str)
-//        write(*str++);
-//    }
-//
-//
-//    FORCE_INLINE void write(const uint8_t *buffer, size_t size)
-//    {
-//      while (size--)
-//        write(*buffer++);
-//    }
-
 };
+extern MarlinBinarySerial MSerial;
 
 
 template<typename arg_t, size_t data_pos, size_t data_size>
 struct send_type_default_impl{
-	static void send(MarlinBinarySerial& serial_port, arg_t data){
-		serial_port.write(reinterpret_cast<const uint8_t*>(&data)[data_pos]);
-		send_type_default_impl<arg_t,data_pos+1,data_size>::send(serial_port,data);
+	static void send( arg_t data ){
+		MSerial.write(reinterpret_cast<const uint8_t*>(&data)[data_pos]);
+		send_type_default_impl<arg_t,data_pos+1,data_size>::send( data );
 	}
 };
 template<typename arg_t,size_t data_size>
 struct send_type_default_impl<arg_t,data_size,data_size>{
-	static void send(MarlinBinarySerial& serial_port, arg_t data){}
+	static void send( arg_t data ){}
 };
 
 template<typename arg_t>
 struct send_type{
-	static void send(MarlinBinarySerial& serial_port, arg_t data){
-		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
+	static void send( arg_t data ){
+		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send( data );
 	}};
 
 template<typename arg_t>
 struct send_type<arg_t*>{
-	static void send(MarlinBinarySerial& serial_port, arg_t* data){
-		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, data);
+	static void send( arg_t* data ){
+		send_type_default_impl<arg_t,0,sizeof(arg_t)>::send( data );
 	}};
 
 template<typename arg_t>
 struct send_type<sized_array<arg_t>>{
-	static void send(MarlinBinarySerial& serial_port, sized_array<arg_t> data){
-		serial_port.write( static_cast<uint8_t>(data.data_size) );
+	static void send( sized_array<arg_t> data){
+		MSerial.write( static_cast<uint8_t>(data.data_size) );
 		arg_t* d = data.data;
 		for(uint8_t i = data.data_size;i!=0;--i){
-			send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, *(d++));
+			send_type_default_impl<arg_t,0,sizeof(arg_t)>::send( *d++ );
 		}
 	}};
 template<typename arg_t,uint8_t data_size>
 struct send_type<fixed_sized_array<arg_t,data_size>>{
-	static void send(MarlinBinarySerial& serial_port, fixed_sized_array<arg_t,data_size> data){
+	static void send( fixed_sized_array<arg_t,data_size> data){
 		arg_t* d = data.data;
 		for(uint8_t i = data_size;i!=0;--i){
-			send_type_default_impl<arg_t,0,sizeof(arg_t)>::send(serial_port, *(d++));
+			send_type_default_impl<arg_t,0,sizeof(arg_t)>::send( *d++ );
 		}
 	}};
 
 template<>
 struct send_type<const char*>{
-	static void send(MarlinBinarySerial& serial_port, const char* data){
-		int data_len = strlen(data);
-		if(data_len < 255){
-			serial_port.write( static_cast<uint8_t>(data_len) );
-			for( uint8_t i=data_len; i != 0; --i )
-				serial_port.write( *data++ );
-		}
+	static void send( const char* data ){
+		while(*data)
+			MSerial.write(*data++);
+		MSerial.write( 0 );
 	}};
 
 template<typename arg_t, typename... rest_t>
-struct send_impl<arg_t,rest_t...>{
-	static void send(MarlinBinarySerial& serial_port, arg_t arg, rest_t... rest_arg){
-		send_type<arg_t>::send(serial_port, arg);
-		send_impl<rest_t...>::send(serial_port, rest_arg...);
+struct send_arg_iterator<arg_t,rest_t...>{
+	static void send( arg_t arg, rest_t... rest_arg ){
+		send_type<arg_t>::send( arg);
+		send_arg_iterator<rest_t...>::send( rest_arg...);
 	}
 };
 
 template<typename arg_t>
-struct send_impl<arg_t>{
-	static void send(MarlinBinarySerial& serial_port, arg_t arg){
-		send_type<arg_t>::send(serial_port, arg);
+struct send_arg_iterator<arg_t>{
+	static void send( arg_t arg){
+		send_type<arg_t>::send( arg );
 	}
 };
 
-extern MarlinBinarySerial MSerial;
+template<typename... arg_ts>
+struct send_impl{
+	static void send(arg_ts... args){
+		MSerial.write(command_magic);
+		send_arg_iterator<arg_ts...>::send( args...);
+	}
+};
+
 #endif // !AT90USB
 
 #endif

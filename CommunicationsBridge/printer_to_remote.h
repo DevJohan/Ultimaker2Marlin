@@ -1005,13 +1005,26 @@ struct serial_remote<printer_message::REPORT_PID_EXTRUDER_PARAMETERS>{
 
 
 
-inline void report_fiset_full_data( int16_t data_count, uint8_t gain, uint16_t magnitude, int16_t data ){
-	MSerial.send<printer_message::REPORT_FISET_FULL_DATA>( data_count, gain, magnitude, data );
-}
+template <>
+struct serial_com<printer_message::REPORT_FISET_FULL_DATA>{
+	static void send(
+			int16_t data_count, uint8_t gain,
+			uint16_t magnitude, int16_t data
+	){
+		MSerial.send<printer_message::REPORT_FISET_FULL_DATA>( data_count, gain, magnitude, data );
+	}
+};
 
-inline std::ostream& remote_report_fiset_full_data( std::ostream& os, int16_t data_count, uint8_t gain, uint16_t magnitude, int16_t data ){
-	return os << "Fiset no " << data_count << ": " << gain << " " << magnitude << " " << data << "\n";
-}
+template <>
+struct serial_remote<printer_message::REPORT_FISET_FULL_DATA>{
+	static std::ostream& handle_recieve( std::ostream& os, int16_t data_count, uint8_t gain, uint16_t magnitude, int16_t data ){
+		return os << "Fiset no " << data_count << ": " << gain << " " << magnitude << " " << data << "\n";
+	}
+};
+
+
+
+
 
 
 template <sdcard_messages sd_message,typename... arg_ts>

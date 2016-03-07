@@ -471,7 +471,7 @@ void setup()
 void loop()
 {
   if(fiset_data_ready()){
-	  report_fiset_full_data( get_fiset_data_count(), get_fiset_gain(), get_fiset_magnitude(), get_fiset_data() );
+	  serial_com<printer_message::REPORT_FISET_FULL_DATA>::send( get_fiset_data_count(), get_fiset_gain(), get_fiset_magnitude(), get_fiset_data() );
   }
 
   if(buflen < (BUFSIZE-1))
